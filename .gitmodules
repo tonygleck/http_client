@@ -1,0 +1,18 @@
+[submodule "deps/umock-c"]
+	path = deps/umock-c
+	url = https://github.com/Azure/umock-c.git
+[submodule "deps/azure-macro-utils-c"]
+	path = deps/azure-macro-utils-c
+	url = https://github.com/Azure/azure-macro-utils-c.git
+[submodule "deps/lib-util-c"]
+	path = deps/lib-util-c
+	url = https://github.com/tonygleck/lib-util-c.git
+[submodule "deps/azure-ctest"]
+	path = deps/azure-ctest
+	url = https://github.com/Azure/azure-ctest.git
+[submodule "deps/azure-c-testrunnerswitcher"]
+	path = deps/azure-c-testrunnerswitcher
+	url = https://github.com/Azure/azure-c-testrunnerswitcher.git
+[submodule "deps/libpatchcords"]
+	path = deps/libpatchcords
+	url = https://github.com/tonygleck/libpatchcords.git
