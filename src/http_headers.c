@@ -101,6 +101,68 @@ int http_header_add(HTTP_HEADERS_HANDLE handle, const char* name, const char* va
     return result;
 }
 
+int clone_string_with_size(char** target, const char* source, size_t source_len)
+{
+    int result;
+    if ((*target = malloc(source_len+1)) == NULL)
+    {
+        log_error("Failure allocating target");
+        result = __LINE__;
+    }
+    else
+    {
+        memset(*target, 0, source_len+1);
+        memcpy(*target, source, source_len);
+        result = 0;
+    }
+    return result;
+}
+
+int http_header_add_partial(HTTP_HEADERS_HANDLE handle, const char* name, size_t name_len, const char* value, size_t value_len)
+{
+    int result;
+    if (handle == NULL || name == NULL || name_len == 0 || value == NULL || value_len == 0)
+    {
+            log_error("Failure invalid parameter specified handle: %p, name: %p, value: %p", handle, name, value);
+            result = __LINE__;
+    }
+    else
+    {
+        NAME_VALUE_PAIR* nvp = (NAME_VALUE_PAIR*)malloc(sizeof(NAME_VALUE_PAIR));
+        if (nvp == NULL)
+        {
+            log_error("Failure invalid parameter specified nvp: %p", nvp);
+            result = __LINE__;
+        }
+        else if (clone_string_with_size(&nvp->name, name, name_len) != 0)
+        {
+            free(nvp);
+            log_error("Failure allocating name value");
+            result = __LINE__;
+        }
+        else if (clone_string_with_size(&nvp->value, value, value_len) != 0)
+        {
+            free(nvp->name);
+            free(nvp);
+            log_error("Failure allocating name value");
+            result = __LINE__;
+        }
+        else if (item_list_add_item(handle->list_items, nvp) )
+        {
+            free(nvp->name);
+            free(nvp->value);
+            free(nvp);
+            log_error("Failure allocating name value");
+            result = __LINE__;
+        }
+        else
+        {
+            result = 0;
+        }
+    }
+    return result;
+}
+
 int http_header_remove(HTTP_HEADERS_HANDLE handle, const char* name)
 {
     int result;

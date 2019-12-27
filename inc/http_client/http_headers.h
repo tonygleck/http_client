@@ -12,6 +12,7 @@ MOCKABLE_FUNCTION(, HTTP_HEADERS_HANDLE, http_header_create);
 MOCKABLE_FUNCTION(, void, http_header_destroy, HTTP_HEADERS_HANDLE, handle);
 
 MOCKABLE_FUNCTION(, int, http_header_add, HTTP_HEADERS_HANDLE, handle, const char*, name, const char*, value);
+MOCKABLE_FUNCTION(, int, http_header_add_partial, HTTP_HEADERS_HANDLE, handle, const char*, name, size_t, name_len, const char*, value, size_t, value_len);
 MOCKABLE_FUNCTION(, int, http_header_remove, HTTP_HEADERS_HANDLE, handle, const char*, name);
 
 MOCKABLE_FUNCTION(, const char*, http_header_get_value, HTTP_HEADERS_HANDLE, handle, const char*, name);

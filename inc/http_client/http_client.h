@@ -6,14 +6,17 @@
 #ifdef __cplusplus
 extern "C" {
 #include <cstddef>
+#include <cstdint>
 #else
 #include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
 #endif /* __cplusplus */
 
 #include "azure_macro_utils/macro_utils.h"
 #include "umock_c/umock_c_prod.h"
 #include "patchcords/xio_client.h"
+#include "http_client/http_headers.h"
 
 #define HTTP_CLIENT_RESULT_VALUES       \
     HTTP_CLIENT_OK,                     \
@@ -23,7 +26,9 @@ extern "C" {
     HTTP_CLIENT_SEND_FAILED,            \
     HTTP_CLIENT_ALREADY_INIT,           \
     HTTP_CLIENT_HTTP_HEADERS_FAILED,    \
-    HTTP_CLIENT_INVALID_STATE           \
+    HTTP_CLIENT_INVALID_STATE,          \
+    HTTP_CLIENT_DISCONNECTION,          \
+    HTTP_CLIENT_MEMORY
 
 MU_DEFINE_ENUM(HTTP_CLIENT_RESULT, HTTP_CLIENT_RESULT_VALUES);
 
@@ -39,21 +44,23 @@ MU_DEFINE_ENUM(HTTP_CLIENT_REQUEST_TYPE, HTTP_CLIENT_REQUEST_TYPE_VALUES);
 
 typedef struct HTTP_CLIENT_INFO_TAG* HTTP_CLIENT_HANDLE;
 
-typedef void(*ON_HTTP_OPEN_COMPLETE_CALLBACK)(void* callback_ctx, HTTP_CALLBACK_REASON open_result);
-typedef void(*ON_HTTP_ERROR_CALLBACK)(void* callback_ctx, HTTP_CALLBACK_REASON error_result);
-typedef void(*ON_HTTP_REQUEST_CALLBACK)(void* callback_ctx, HTTP_CALLBACK_REASON request_result, const unsigned char* content, size_t content_length, unsigned int status_code,
+typedef void(*ON_HTTP_OPEN_COMPLETE_CALLBACK)(void* callback_ctx, HTTP_CLIENT_RESULT open_result);
+typedef void(*ON_HTTP_ERROR_CALLBACK)(void* callback_ctx, HTTP_CLIENT_RESULT error_result);
+typedef void(*ON_HTTP_REQUEST_CALLBACK)(void* callback_ctx, HTTP_CLIENT_RESULT request_result, const unsigned char* content, size_t content_length, unsigned int status_code,
     HTTP_HEADERS_HANDLE response_headers);
-typedef int(*ON_HTTP_CLIENT_CLOSE)(void* callback_context);
+typedef void(*ON_HTTP_CLIENT_CLOSE)(void* callback_context);
 
 MOCKABLE_FUNCTION(, HTTP_CLIENT_HANDLE, http_client_create);
 MOCKABLE_FUNCTION(, void, http_client_destroy, HTTP_CLIENT_HANDLE, handle);
 
-MOCKABLE_FUNCTION(, int, http_client_open, HTTP_CLIENT_HANDLE, handle, XIO_INSTANCE_HANDLE, comm_handle);
+MOCKABLE_FUNCTION(, int, http_client_open, HTTP_CLIENT_HANDLE, handle, XIO_INSTANCE_HANDLE, xio_handle, ON_HTTP_OPEN_COMPLETE_CALLBACK, on_open_complete_cb, void*, user_ctx, ON_HTTP_ERROR_CALLBACK, on_error_cb, void*, err_user_ctx);
 MOCKABLE_FUNCTION(, int, http_client_close, HTTP_CLIENT_HANDLE, handle, ON_HTTP_CLIENT_CLOSE, http_close_cb, void*, user_ctx);
 
 MOCKABLE_FUNCTION(, int, http_client_execute_request, HTTP_CLIENT_HANDLE, handle, HTTP_CLIENT_REQUEST_TYPE, request_type, const char*, relative_path,
     HTTP_HEADERS_HANDLE, http_header, const unsigned char*, content, size_t, content_length, ON_HTTP_REQUEST_CALLBACK, on_request_callback, void*, callback_ctx);
 
 MOCKABLE_FUNCTION(, void, http_client_process_item, HTTP_CLIENT_HANDLE, handle);
+
+MOCKABLE_FUNCTION(, int, http_client_set_trace, HTTP_CLIENT_HANDLE, handle, bool, set_trace);
 
 #endif // HTTP_CLIENT_H

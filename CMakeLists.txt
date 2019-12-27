@@ -32,20 +32,27 @@ include_directories(${PROJECT_SOURCE_DIR}/inc)
 
 #these are the C source files
 set(source_c_files
+    ${PROJECT_SOURCE_DIR}/src/http_client.c
+    ${PROJECT_SOURCE_DIR}/src/http_codec.c
     ${PROJECT_SOURCE_DIR}/src/http_headers.c
 )
 
 #these are the C headers
 set(source_h_files
     ${PROJECT_SOURCE_DIR}/inc/http_client/http_client.h
+    ${PROJECT_SOURCE_DIR}/inc/http_client/http_codec.h
     ${PROJECT_SOURCE_DIR}/inc/http_client/http_headers.h
 )
 
 #this is the product (a library)
 add_library(http_client ${source_c_files} ${source_h_files})
 
+#addCompileSettings(http_client)
+compileTargetAsC99(http_client)
+
 if (${http_client_ut})
     enable_testing()
+    include (CTest)
 
     include("${CMAKE_CURRENT_LIST_DIR}/cmake_configs/proj_testing.cmake")
 

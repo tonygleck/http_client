@@ -202,7 +202,7 @@ TEST_FUNCTION(http_header_create_fail)
             HTTP_HEADERS_HANDLE handle = http_header_create();
 
             // assert
-            ASSERT_IS_NULL(handle, "xio_socket_create failure %d/%d", (int)index, (int)count);
+            ASSERT_IS_NULL(handle, "http_header_create failure %d/%d", (int)index, (int)count);
         }
     }
     // cleanup
