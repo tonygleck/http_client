@@ -23,12 +23,10 @@ if (NOT TARGET lib-util-c)
     add_subdirectory(${PROJECT_SOURCE_DIR}/deps/lib-util-c)
     include_directories(${PROJECT_SOURCE_DIR}/deps/lib-util-c/inc)
 endif()
-if (NOT TARGET libpatchcords)
+if (NOT TARGET patchcords)
     add_subdirectory(${PROJECT_SOURCE_DIR}/deps/libpatchcords)
     include_directories(${PROJECT_SOURCE_DIR}/deps/libpatchcords/inc)
 endif()
-
-include_directories(${PROJECT_SOURCE_DIR}/inc)
 
 #these are the C source files
 set(source_c_files
@@ -46,6 +44,7 @@ set(source_h_files
 
 #this is the product (a library)
 add_library(http_client ${source_c_files} ${source_h_files})
+target_include_directories(http_client PUBLIC ${PROJECT_SOURCE_DIR}/inc)
 
 #addCompileSettings(http_client)
 compileTargetAsC99(http_client)

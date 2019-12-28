@@ -3,6 +3,13 @@
 #ifndef HTTP_CODEC_H
 #define HTTP_CODEC_H
 
+#ifdef __cplusplus
+extern "C" {
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
+
 #include "azure_macro_utils/macro_utils.h"
 #include "umock_c/umock_c_prod.h"
 #include "patchcords/xio_client.h"

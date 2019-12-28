@@ -101,7 +101,7 @@ int http_header_add(HTTP_HEADERS_HANDLE handle, const char* name, const char* va
     return result;
 }
 
-int clone_string_with_size(char** target, const char* source, size_t source_len)
+static int clone_string_with_size(char** target, const char* source, size_t source_len)
 {
     int result;
     if ((*target = malloc(source_len+1)) == NULL)
