@@ -365,15 +365,15 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
 
         if (codec_info->recv_state != state_error)
         {
-            size_t index = 0;
+            size_t buff_index = 0;
             if (codec_info->recv_state == state_process_status_line)
             {
-                parse_res = process_status_code_line(codec_info->recv_data.recv_msg.payload+codec_info->recv_data.buffer_offset, codec_info->recv_data.buffer_length, &index, &codec_info->recv_data.status_code);
+                parse_res = process_status_code_line(codec_info->recv_data.recv_msg.payload+codec_info->recv_data.buffer_offset, codec_info->recv_data.buffer_length, &buff_index, &codec_info->recv_data.status_code);
                 if (parse_res == result_complete && codec_info->recv_data.status_code > 0)
                 {
                     // Shrink the buffer
-                    codec_info->recv_data.buffer_offset += index;
-                    codec_info->recv_data.buffer_length -= index;
+                    codec_info->recv_data.buffer_offset += buff_index;
+                    codec_info->recv_data.buffer_length -= buff_index;
                     codec_info->recv_state = state_process_headers;
 
                     // Reduce the buffer space
@@ -389,8 +389,8 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
 
             if (codec_info->recv_state == state_process_headers)
             {
-                index = 0;
-                parse_res = process_header_line(codec_info->recv_data.recv_header, codec_info->recv_data.recv_msg.payload+codec_info->recv_data.buffer_offset, codec_info->recv_data.buffer_length, &index, &codec_info->recv_data.content_info.payload_size, &codec_info->recv_data.is_chunked);
+                buff_index = 0;
+                parse_res = process_header_line(codec_info->recv_data.recv_header, codec_info->recv_data.recv_msg.payload+codec_info->recv_data.buffer_offset, codec_info->recv_data.buffer_length, &buff_index, &codec_info->recv_data.content_info.payload_size, &codec_info->recv_data.is_chunked);
                 if (parse_res == result_complete)
                 {
                     if (codec_info->recv_data.content_info.payload_size == 0)
@@ -411,8 +411,8 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
                     }
 
                     // If we're not sending the user infor
-                    codec_info->recv_data.buffer_offset += index;
-                    codec_info->recv_data.buffer_length -= index;
+                    codec_info->recv_data.buffer_offset += buff_index;
+                    codec_info->recv_data.buffer_length -= buff_index;
 
                     reduce_wasted_space(&codec_info->recv_data.recv_msg, codec_info->recv_data.buffer_offset);
                     codec_info->recv_data.buffer_offset = 0;
@@ -424,8 +424,8 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
                 }
                 else
                 {
-                    codec_info->recv_data.buffer_offset += index;
-                    codec_info->recv_data.buffer_length -= index;
+                    codec_info->recv_data.buffer_offset += buff_index;
+                    codec_info->recv_data.buffer_length -= buff_index;
                 }
             }
 
