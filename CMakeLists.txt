@@ -1,6 +1,6 @@
 #Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-cmake_minimum_required(VERSION 3.3.0)
+cmake_minimum_required(VERSION 3.5)
 
 #Use solution folders.
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -8,6 +8,14 @@ project(http_client)
 
 option(http_client_ut "Include unittest in build" OFF)
 option(http_client_samples "Include samples in build" OFF)
+
+if (CMAKE_BUILD_TYPE MATCHES "Debug" AND NOT WIN32)
+    set(DEBUG_CONFIG ON)
+    set(ENABLE_COVERAGE ON)
+else()
+    set(ENABLE_COVERAGE OFF)
+    set(DEBUG_CONFIG OFF)
+endif()
 
 include("${PROJECT_SOURCE_DIR}/cmake_configs/proj_config.cmake")
 
@@ -46,7 +54,7 @@ set(source_h_files
 add_library(http_client ${source_c_files} ${source_h_files})
 target_include_directories(http_client PUBLIC ${PROJECT_SOURCE_DIR}/inc)
 
-#addCompileSettings(http_client)
+addCompileSettings(http_client)
 compileTargetAsC99(http_client)
 
 if (${http_client_ut})
@@ -54,6 +62,7 @@ if (${http_client_ut})
     include (CTest)
 
     include("${CMAKE_CURRENT_LIST_DIR}/cmake_configs/proj_testing.cmake")
+    enable_coverage_testing()
 
     if ((NOT TARGET testrunnerswitcher) AND (EXISTS ${CMAKE_CURRENT_LIST_DIR}/deps/azure-c-testrunnerswitcher/CMakeLists.txt))
         add_subdirectory(${PROJECT_SOURCE_DIR}/deps/azure-c-testrunnerswitcher)

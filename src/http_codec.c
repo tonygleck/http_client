@@ -195,7 +195,7 @@ static int initialize_received_data(HTTP_INCOMING_DATA* recv_data, const unsigne
     return result;
 }
 
-static PARSE_RESULT process_status_code_line(const unsigned char* content_data, size_t content_len, size_t* position, int* status_code)
+static PARSE_RESULT process_status_code_line(const unsigned char* content_data, size_t content_len, size_t* position, uint32_t* status_code)
 {
     PARSE_RESULT result = result_success;
     int space_found = 0;
@@ -220,7 +220,7 @@ static PARSE_RESULT process_status_code_line(const unsigned char* content_data, 
         else if (content_data[index] == '\n')
         {
             /* code */
-            *status_code = (int)atol(initial_space);
+            *status_code = (uint32_t)atol(initial_space);
             if (index < content_len)
             {
                 *position = index+1;
@@ -254,7 +254,7 @@ static PARSE_RESULT process_header_line(HTTP_HEADERS_HANDLE recv_header, const u
             colon_encountered = true;
             size_t key_len = (&content_data[index])-target_pos;
 
-            header_key = target_pos;
+            header_key = (const char*)target_pos;
             header_key_len = key_len;
 
             target_pos = content_data+index+1;
@@ -268,7 +268,7 @@ static PARSE_RESULT process_header_line(HTTP_HEADERS_HANDLE recv_header, const u
                 while (*target_pos == 32) { target_pos++; }
 
                 size_t value_len = (&content_data[index])-target_pos;
-                const char* header_value = target_pos;
+                const char* header_value = (const char*)target_pos;
                 size_t header_value_len = value_len;
 
                 if (http_header_add_partial(recv_header, header_key, header_key_len, header_value, header_value_len) != 0)
@@ -299,10 +299,6 @@ static PARSE_RESULT process_header_line(HTTP_HEADERS_HANDLE recv_header, const u
                     }
                 }
                 header_key = NULL;
-            }
-            else
-            {
-                /* code */
             }
         }
         else if (content_data[index] == '\n')
@@ -472,7 +468,6 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
                     {
                         size_t data_length = 0;
 
-                        /* Codes_SRS_UHTTP_07_055: [ on_bytes_received shall convert the hexs length supplied in the response to the data length of the chunked data. ] */
                         size_t hex_len = end - begin;
                         if ((data_length = convert_char_to_hex(begin, hex_len)) == 0)
                         {
@@ -554,7 +549,7 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
             if (codec_info->recv_state == state_send_user_callback || codec_info->recv_state == state_error)
             {
                 HTTP_RECV_DATA http_recv_data = {0};
-                HTTP_CODEC_CB_RESULT operation_result;
+                HTTP_CODEC_CB_RESULT operation_result = HTTP_CODEC_CB_RESULT_OK;
 
                 if (codec_info->trace_on)
                 {
@@ -592,7 +587,22 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
                 memset(&codec_info->recv_data, 0, sizeof(HTTP_INCOMING_DATA));
             }
         }
+        else
+        {
+            codec_info->data_callback(codec_info->user_ctx, HTTP_CODEC_CB_RESULT_ERROR, NULL);
+            codec_info->recv_state = state_parse_complete;
+        }
     }
+}
+
+static void deinit_data(HTTP_INCOMING_DATA* data_obj)
+{
+    http_header_destroy(data_obj->recv_header);
+    data_obj->recv_header = NULL;
+    free(data_obj->content_info.payload);
+    data_obj->content_info.payload = NULL;
+    free(data_obj->recv_msg.payload);
+    data_obj->recv_msg.payload = NULL;
 }
 
 HTTP_CODEC_HANDLE http_codec_create(ON_HTTP_DATA_CALLBACK data_callback, void* user_ctx)
@@ -615,8 +625,25 @@ void http_codec_destroy(HTTP_CODEC_HANDLE handle)
 {
     if (handle != NULL)
     {
+        deinit_data(&handle->recv_data);
         free(handle);
     }
+}
+
+int http_codec_reintialize(HTTP_CODEC_HANDLE handle)
+{
+    int result;
+    if (handle == NULL)
+    {
+        log_error("Invalid argument specified handle: NULL");
+        result = __LINE__;
+    }
+    else
+    {
+        handle->recv_state = state_initial;
+        deinit_data(&handle->recv_data);
+    }
+    return result;
 }
 
 ON_BYTES_RECEIVED http_codec_get_recv_function(void)
@@ -630,7 +657,7 @@ int http_codec_set_trace(HTTP_CODEC_HANDLE handle, bool set_trace)
     if (handle == NULL)
     {
         log_error("Invalid argument specified handle: NULL");
-        result == __LINE__;
+        result = __LINE__;
     }
     else
     {

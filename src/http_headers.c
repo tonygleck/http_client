@@ -101,23 +101,6 @@ int http_header_add(HTTP_HEADERS_HANDLE handle, const char* name, const char* va
     return result;
 }
 
-static int clone_string_with_size(char** target, const char* source, size_t source_len)
-{
-    int result;
-    if ((*target = malloc(source_len+1)) == NULL)
-    {
-        log_error("Failure allocating target");
-        result = __LINE__;
-    }
-    else
-    {
-        memset(*target, 0, source_len+1);
-        memcpy(*target, source, source_len);
-        result = 0;
-    }
-    return result;
-}
-
 int http_header_add_partial(HTTP_HEADERS_HANDLE handle, const char* name, size_t name_len, const char* value, size_t value_len)
 {
     int result;
@@ -252,6 +235,7 @@ int http_header_get_name_value_pair(HTTP_HEADERS_HANDLE handle, size_t index, co
         }
         else
         {
+            log_error("Failued getting list item");
             result = __LINE__;
         }
     }

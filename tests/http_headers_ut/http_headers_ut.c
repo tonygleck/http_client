@@ -41,6 +41,9 @@ static const char* TEST_HEADER_VALUE_2 = "TEST_HEADER_VALUE_2";
 static const char* TEST_HEADER_NAME_3 = "TEST_HEADER_NAME_3";
 static const char* TEST_HEADER_VALUE_3 = "TEST_HEADER_VALUE_3";
 
+static size_t PARTIAL_TEST_HEADER_LEN = 16;
+static size_t PARTIAL_TEST_HEADER_VAL_LEN = 17;
+
 static ITEM_LIST_DESTROY_ITEM g_list_destroy_cb;
 static void* g_destroy_user_ctx;
 static const void* g_list_added_item;
@@ -86,6 +89,13 @@ extern "C" {
         return 0;
     }
 
+    static int my_clone_string_with_size(char** target, const char* source, size_t len)
+    {
+        *target = my_mem_shim_malloc(len+1);
+        strncpy(*target, source, len);
+        return 0;
+    }
+
 #ifdef __cplusplus
 }
 #endif
@@ -128,6 +138,8 @@ TEST_SUITE_INITIALIZE(suite_init)
 
     REGISTER_GLOBAL_MOCK_HOOK(clone_string, my_clone_string);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(clone_string, __LINE__);
+    REGISTER_GLOBAL_MOCK_HOOK(clone_string_with_size, my_clone_string_with_size);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(clone_string_with_size, __LINE__);
 }
 
 TEST_SUITE_CLEANUP(suite_cleanup)
@@ -162,6 +174,14 @@ static void setup_http_header_add_mocks(void)
     STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(clone_string(IGNORED_PTR_ARG, TEST_HEADER_NAME_1));
     STRICT_EXPECTED_CALL(clone_string(IGNORED_PTR_ARG, TEST_HEADER_VALUE_1));
+    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+}
+
+static void setup_http_header_add_partial_mocks(void)
+{
+    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(clone_string_with_size(IGNORED_PTR_ARG, TEST_HEADER_NAME_1, PARTIAL_TEST_HEADER_LEN));
+    STRICT_EXPECTED_CALL(clone_string_with_size(IGNORED_PTR_ARG, TEST_HEADER_VALUE_1, PARTIAL_TEST_HEADER_VAL_LEN));
     STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
 }
 
@@ -339,6 +359,72 @@ TEST_FUNCTION(http_header_add_succeed)
     http_header_destroy(handle);
 }
 
+TEST_FUNCTION(http_header_add_partial_handle_NULL_fail)
+{
+    // arrange
+
+    // act
+    int result = http_header_add_partial(NULL, TEST_HEADER_NAME_1, PARTIAL_TEST_HEADER_LEN, TEST_HEADER_VALUE_1, PARTIAL_TEST_HEADER_VAL_LEN);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+}
+
+TEST_FUNCTION(http_header_add_partial_succeed)
+{
+    // arrange
+    HTTP_HEADERS_HANDLE handle = http_header_create();
+    umock_c_reset_all_calls();
+
+    setup_http_header_add_partial_mocks();
+
+    // act
+    int result = http_header_add_partial(handle, TEST_HEADER_NAME_1, PARTIAL_TEST_HEADER_LEN, TEST_HEADER_VALUE_1, PARTIAL_TEST_HEADER_VAL_LEN);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    http_header_destroy(handle);
+}
+
+TEST_FUNCTION(http_header_add_partial_fail)
+{
+    // arrange
+    HTTP_HEADERS_HANDLE handle = http_header_create();
+    umock_c_reset_all_calls();
+
+    int negativeTestsInitResult = umock_c_negative_tests_init();
+    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+
+    setup_http_header_add_partial_mocks();
+    umock_c_negative_tests_snapshot();
+
+    // act
+    size_t count = umock_c_negative_tests_call_count();
+    for (size_t index = 0; index < count; index++)
+    {
+        if (umock_c_negative_tests_can_call_fail(index))
+        {
+            umock_c_negative_tests_reset();
+            umock_c_negative_tests_fail_call(index);
+
+            int result = http_header_add_partial(handle, TEST_HEADER_NAME_1, PARTIAL_TEST_HEADER_LEN, TEST_HEADER_VALUE_1, PARTIAL_TEST_HEADER_VAL_LEN);
+
+            // assert
+            ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_header_add_partial failure%d/%d", (int)index, (int)count);
+        }
+    }
+
+    // cleanup
+    http_header_destroy(handle);
+    umock_c_negative_tests_deinit();
+}
+
 TEST_FUNCTION(http_header_remove_no_items_succeed)
 {
     // arrange
@@ -358,6 +444,20 @@ TEST_FUNCTION(http_header_remove_no_items_succeed)
 
     // cleanup
     http_header_destroy(handle);
+}
+
+TEST_FUNCTION(http_header_remove_items_handle_NULL_fail)
+{
+    // arrange
+
+    // act
+    int result = http_header_remove(NULL, TEST_HEADER_NAME_1);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
 }
 
 TEST_FUNCTION(http_header_remove_items_succeed)
@@ -564,6 +664,28 @@ TEST_FUNCTION(http_header_get_name_value_pair_succeed)
     ASSERT_ARE_EQUAL(int, 0, result);
     ASSERT_ARE_EQUAL(char_ptr, TEST_HEADER_NAME_1, name);
     ASSERT_ARE_EQUAL(char_ptr, TEST_HEADER_VALUE_1, value);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    http_header_destroy(handle);
+}
+
+TEST_FUNCTION(http_header_get_name_value_pair_get_item_fail)
+{
+    // arrange
+    HTTP_HEADERS_HANDLE handle = http_header_create();
+    ASSERT_ARE_EQUAL(int, 0, http_header_add(handle, TEST_HEADER_NAME_1, TEST_HEADER_VALUE_1));
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, 0)).SetReturn(NULL);
+
+    // act
+    const char* name;
+    const char* value;
+    int result = http_header_get_name_value_pair(handle, 0, &name, &value);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup

@@ -35,6 +35,8 @@ typedef void(*ON_HTTP_DATA_CALLBACK)(void* callback_ctx, HTTP_CODEC_CB_RESULT re
 MOCKABLE_FUNCTION(, HTTP_CODEC_HANDLE, http_codec_create, ON_HTTP_DATA_CALLBACK, data_callback, void*, user_ctx);
 MOCKABLE_FUNCTION(, void, http_codec_destroy, HTTP_CODEC_HANDLE, handle);
 
+MOCKABLE_FUNCTION(, int, http_codec_reintialize, HTTP_CODEC_HANDLE, handle);
+
 MOCKABLE_FUNCTION(, ON_BYTES_RECEIVED, http_codec_get_recv_function);
 
 MOCKABLE_FUNCTION(, int, http_codec_set_trace, HTTP_CODEC_HANDLE, handle, bool, set_trace);

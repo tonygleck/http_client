@@ -41,6 +41,7 @@ typedef struct HTTP_CLIENT_INFO_TAG
     ITEM_LIST_HANDLE recv_callback_list;
 
     HTTP_CLIENT_STATE state;
+    HTTP_CLIENT_RESULT curr_result;
 
     ON_HTTP_ERROR_CALLBACK on_error_cb;
     void* err_user_ctx;
@@ -55,6 +56,7 @@ typedef struct HTTP_CLIENT_INFO_TAG
 
 typedef struct HTTP_REQUEST_INFO_TAG
 {
+    HTTP_CLIENT_INFO* client_info;
     ON_HTTP_REQUEST_CALLBACK on_request_cb;
     void* on_request_ctx;
 
@@ -132,6 +134,7 @@ static void on_open_complete(void* context, IO_OPEN_RESULT open_result)
         else
         {
             client_info->state = CLIENT_STATE_ERROR;
+            client_info->curr_result = HTTP_CLIENT_OPEN_FAILED;
             log_error("Failure opening http client: %d", open_result);
         }
     }
@@ -143,18 +146,6 @@ static void on_close_complete(void* context)
     {
         HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
         client_info->state = CLIENT_STATE_NOT_CONN;
-    }
-}
-
-static void on_bytes_recv(void* context, const unsigned char* buffer, size_t size)
-{
-    if (context != NULL)
-    {
-        HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
-
-        (void)client_info;
-        (void)buffer;
-        (void)size;
     }
 }
 
@@ -187,16 +178,21 @@ static void on_send_complete(void* context, IO_SEND_RESULT send_result)
 {
     if (context != NULL)
     {
-        HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
-        (void)client_info;
-        (void)send_result;
+        if (send_result == IO_SEND_OK)
+        {
+            //HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
+            //if (client_info->)
+        }
+        else
+        {
+        }
+
     }
 }
 
 static int construct_http_data(const HTTP_REQUEST_INFO* request_info, STRING_BUFFER* http_req_line)
 {
-    int result;
-
+    int result = 0;
     const char* method;
     switch (request_info->request_type)
     {
@@ -218,15 +214,23 @@ static int construct_http_data(const HTTP_REQUEST_INFO* request_info, STRING_BUF
         case HTTP_CLIENT_REQUEST_PATCH:
             method = "PATCH";
             break;
+        case HTTP_CLIENT_REQUEST_TYPE_INVALID:
+        default:
+            result = __LINE__;
+            method = "";
+            break;
     }
-    if (string_buffer_construct_sprintf(http_req_line, HTTP_REQUEST_LINE_FMT, method, request_info->relative_path, request_info->header_line) != 0)
+    if (result == 0)
     {
-        log_error("Failure constructing request line");
-        result = __LINE__;
-    }
-    else
-    {
-        result = 0;
+        if (string_buffer_construct_sprintf(http_req_line, HTTP_REQUEST_LINE_FMT, method, request_info->relative_path, request_info->header_line) != 0)
+        {
+            log_error("Failure constructing request line");
+            result = __LINE__;
+        }
+        else
+        {
+            result = 0;
+        }
     }
     return result;
 }
@@ -302,6 +306,10 @@ static void on_codec_recv_callback(void* context, HTTP_CODEC_CB_RESULT result, c
             }
             resp_info->on_request_cb(resp_info->on_request_ctx, request_res, http_recv_data->http_content.payload, http_recv_data->http_content.payload_size,
                 http_recv_data->status_code, http_recv_data->recv_header);
+        }
+        else
+        {
+            log_error("Could not retrieve http response info");
         }
     }
 }
@@ -392,7 +400,7 @@ int http_client_open(HTTP_CLIENT_HANDLE handle, XIO_INSTANCE_HANDLE xio_handle, 
         handle->open_complete_ctx = user_ctx;
         handle->on_error_cb = on_error_cb;
         handle->err_user_ctx = err_user_ctx;
-        if (xio_client_open(handle->xio_handle, on_open_complete, handle, on_bytes_recv, handle, on_error, handle) != 0)
+        if (xio_client_open(handle->xio_handle, on_open_complete, handle, http_codec_get_recv_function(), handle->codec_handle, on_error, handle) != 0)
         {
             log_error("Failure opening http client");
             result = __LINE__;
@@ -428,6 +436,7 @@ int http_client_close(HTTP_CLIENT_HANDLE handle, ON_HTTP_CLIENT_CLOSE on_close_c
             if (xio_client_close(handle->xio_handle, on_close_complete, handle) != 0)
             {
                 log_error("Failure on close attempt");
+                handle->curr_result = HTTP_CLIENT_ERROR;
                 handle->state = CLIENT_STATE_ERROR;
                 result = __LINE__;
             }
@@ -474,6 +483,7 @@ int http_client_execute_request(HTTP_CLIENT_HANDLE handle, HTTP_CLIENT_REQUEST_T
             memset(execute_req, 0, sizeof(HTTP_REQUEST_INFO));
             uint16_t port;
             execute_req->request_type = request_type;
+            execute_req->client_info = handle;
 
             resp_info.on_request_cb = on_request_callback;
             resp_info.on_request_ctx = callback_ctx;
@@ -551,6 +561,8 @@ void http_client_process_item(HTTP_CLIENT_HANDLE handle)
                     {
                         if ((execute_req = (const HTTP_REQUEST_INFO*)item_list_get_item(handle->request_list, index)) == NULL)
                         {
+                            handle->state = CLIENT_STATE_ERROR;
+                            handle->curr_result = HTTP_CLIENT_MEMORY;
                             log_error("Invalid item in the list");
                         }
                         else
@@ -558,14 +570,16 @@ void http_client_process_item(HTTP_CLIENT_HANDLE handle)
                             // Send the item
                             if (send_http_request(handle, execute_req) != 0)
                             {
+                                handle->state = CLIENT_STATE_ERROR;
+                                handle->curr_result = HTTP_CLIENT_MEMORY;
+                                log_error("Failure sending http request");
                                 break;
                             }
-                            else
+                            else if (item_list_remove_item(handle->request_list, index) != 0)
                             {
-                                if (item_list_remove_item(handle->request_list, index) != 0)
-                                {
-                                    log_error("Invalid paramenter handle is NULL");
-                                }
+                                handle->state = CLIENT_STATE_ERROR;
+                                handle->curr_result = HTTP_CLIENT_MEMORY;
+                                log_error("Invalid paramenter handle is NULL");
                             }
                         }
                     }
@@ -576,7 +590,11 @@ void http_client_process_item(HTTP_CLIENT_HANDLE handle)
                 break;
             case CLIENT_STATE_ERROR:
                 // If not open then close
-                handle->state = CLIENT_STATE_NOT_CONN;
+                //if ()
+                if (handle->on_error_cb)
+                {
+                    handle->on_error_cb(handle->err_user_ctx, handle->curr_result);
+                }
                 break;
         }
     }
@@ -587,7 +605,7 @@ int http_client_set_trace(HTTP_CLIENT_HANDLE handle, bool set_trace)
     int result;
     if (handle == NULL)
     {
-        result == __LINE__;
+        result = __LINE__;
         log_error("Invalid argument specified handle: NULL");
     }
     else

@@ -159,16 +159,22 @@ extern "C" {
     {
         HTTP_CODEC_VALIDATE* validate = (HTTP_CODEC_VALIDATE*)callback_ctx;
         ASSERT_IS_NOT_NULL(validate);
-        if (validate->content == NULL)
+        if (result == HTTP_CODEC_CB_RESULT_OK)
         {
-            ASSERT_IS_NULL(http_recv_data->http_content.payload);
+            if (validate->content == NULL)
+            {
+                ASSERT_IS_NULL(http_recv_data->http_content.payload);
+            }
+            else
+            {
+                ASSERT_ARE_EQUAL(int, 0, memcmp(http_recv_data->http_content.payload, validate->content, http_recv_data->http_content.payload_size));
+            }
+            ASSERT_ARE_EQUAL(uint32_t, validate->status_code, http_recv_data->status_code);
         }
         else
         {
-            ASSERT_ARE_EQUAL(int, 0, memcmp(http_recv_data->http_content.payload, validate->content, http_recv_data->http_content.payload_size));
+            ASSERT_IS_NULL(http_recv_data);
         }
-        ASSERT_ARE_EQUAL(uint32_t, validate->status_code, http_recv_data->status_code);
-
     }
 
     static int my_byte_buffer_construct(BYTE_BUFFER* buffer, const unsigned char* payload, size_t length)
@@ -275,6 +281,13 @@ TEST_FUNCTION_CLEANUP(method_cleanup)
     TEST_MUTEX_RELEASE(test_serialize_mutex);
 }
 
+static void setup_deinit_data_mocks(void)
+{
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+}
+
 static void setup_http_header_item(const char* header_name)
 {
     STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
@@ -331,6 +344,7 @@ TEST_FUNCTION(http_codec_destroy_succeed)
     HTTP_CODEC_HANDLE handle = http_codec_create(test_on_data_recv_callback, NULL);
     umock_c_reset_all_calls();
 
+    setup_deinit_data_mocks();
     STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
 
     // act
@@ -340,6 +354,37 @@ TEST_FUNCTION(http_codec_destroy_succeed)
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
+}
+
+TEST_FUNCTION(http_codec_reintialize_fail)
+{
+    // arrange
+
+    // act
+    http_codec_reintialize(NULL);
+
+    // assert
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+}
+
+TEST_FUNCTION(http_codec_reintialize_succeed)
+{
+    // arrange
+    HTTP_CODEC_HANDLE handle = http_codec_create(test_on_data_recv_callback, NULL);
+    umock_c_reset_all_calls();
+
+    setup_deinit_data_mocks();
+
+    // act
+    http_codec_reintialize(handle);
+
+    // assert
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    http_codec_destroy(handle);
 }
 
 TEST_FUNCTION(http_codec_get_recv_function_succeed)
@@ -438,6 +483,52 @@ TEST_FUNCTION(on_http_bytes_recv_small_example_succeed)
     http_codec_destroy(handle);
 }
 
+TEST_FUNCTION(on_http_bytes_recv_small_example_fail)
+{
+    // arrange
+    HTTP_CODEC_VALIDATE validate = {TEST_HTTP_EXAMPLE_BODY, 200};
+    HTTP_CODEC_HANDLE handle = http_codec_create(test_on_data_recv_callback, (void*)&validate);
+    ON_BYTES_RECEIVED on_bytes_recv = http_codec_get_recv_function();
+    umock_c_reset_all_calls();
+
+    int negativeTestsInitResult = umock_c_negative_tests_init();
+    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+
+    STRICT_EXPECTED_CALL(http_header_create());
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+
+    setup_http_header_item("Date");
+    setup_http_header_item("Accept-Ranges");
+    setup_http_header_item("Content-Type");
+    setup_http_header_item("content-length");
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+
+    umock_c_negative_tests_snapshot();
+
+    // act
+    size_t count = umock_c_negative_tests_call_count();
+    for (size_t index = 0; index < count; index++)
+    {
+        if (umock_c_negative_tests_can_call_fail(index))
+        {
+            umock_c_negative_tests_reset();
+            umock_c_negative_tests_fail_call(index);
+
+            const char* test_value = TEST_SMALL_HTTP_EXAMPLE;
+            size_t test_len = strlen(test_value);
+            on_bytes_recv(handle, (const unsigned char*)test_value, test_len);
+
+            // assert
+
+            (void)http_codec_reintialize(handle);
+        }
+    }
+    // cleanup
+    http_codec_destroy(handle);
+    umock_c_negative_tests_deinit();
+}
+
 TEST_FUNCTION(on_http_bytes_recv_example_2_succeed)
 {
     // arrange
@@ -448,7 +539,6 @@ TEST_FUNCTION(on_http_bytes_recv_example_2_succeed)
 
     STRICT_EXPECTED_CALL(http_header_create());
     STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-
     setup_http_header_item("Date");
     setup_http_header_item("X-Content-Type-Options");
     STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
@@ -598,6 +688,39 @@ TEST_FUNCTION(on_http_bytes_recv_chunked_IRL_content_succeed)
     }
 
     // assert
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    http_codec_destroy(handle);
+}
+
+TEST_FUNCTION(http_codec_set_trace_handle_NULL_fail)
+{
+    // arrange
+    umock_c_reset_all_calls();
+
+    // act
+    int result = http_codec_set_trace(NULL, true);
+
+    // assert
+    ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+}
+
+TEST_FUNCTION(http_codec_set_trace_succeed)
+{
+    // arrange
+    HTTP_CODEC_VALIDATE validate = {TEST_HTTP_CHUNK_EXAMPLE_IRL_2_BODY, 200};
+    HTTP_CODEC_HANDLE handle = http_codec_create(test_on_data_recv_callback, &validate);
+    umock_c_reset_all_calls();
+
+    // act
+    int result = http_codec_set_trace(handle, true);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 0, result);
     ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
