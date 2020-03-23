@@ -13,6 +13,6 @@
 [submodule "deps/azure-c-testrunnerswitcher"]
 	path = deps/azure-c-testrunnerswitcher
 	url = https://github.com/Azure/azure-c-testrunnerswitcher.git
-[submodule "deps/libpatchcords"]
-	path = deps/libpatchcords
-	url = https://github.com/tonygleck/libpatchcords.git
+[submodule "deps/patchcords"]
+	path = deps/patchcords
+	url = https://github.com/tonygleck/patchcords.git

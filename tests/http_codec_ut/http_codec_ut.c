@@ -280,20 +280,20 @@ TEST_FUNCTION_CLEANUP(method_cleanup)
 
 static void setup_deinit_data_mocks(void)
 {
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 }
 
 static void setup_http_header_item(const char* header_name)
 {
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 }
 
 TEST_FUNCTION(http_codec_create_succeed)
 {
     // arrange
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG));
 
     // act
     HTTP_CODEC_HANDLE handle = http_codec_create(test_on_data_recv_callback, NULL);
@@ -309,7 +309,7 @@ TEST_FUNCTION(http_codec_create_succeed)
 TEST_FUNCTION(http_codec_create_fail)
 {
     // arrange
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG)).SetReturn(NULL);
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG)).SetReturn(NULL);
 
     // act
     HTTP_CODEC_HANDLE handle = http_codec_create(test_on_data_recv_callback, NULL);
@@ -342,7 +342,7 @@ TEST_FUNCTION(http_codec_destroy_succeed)
     umock_c_reset_all_calls();
 
     setup_deinit_data_mocks();
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     http_codec_destroy(handle);
@@ -411,28 +411,28 @@ TEST_FUNCTION(on_http_bytes_recv_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_header_create());
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     //setup_http_header_item("content-type");
     //setup_http_header_item("content-encoding");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_add_partial(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     size_t count = sizeof(TEST_HTTP_EXAMPLE)/sizeof(TEST_HTTP_EXAMPLE[0]);
@@ -459,14 +459,14 @@ TEST_FUNCTION(on_http_bytes_recv_small_example_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_header_create());
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     setup_http_header_item("Date");
     setup_http_header_item("Accept-Ranges");
     setup_http_header_item("Content-Type");
     setup_http_header_item("content-length");
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     const char* test_value = TEST_SMALL_HTTP_EXAMPLE;
@@ -492,14 +492,14 @@ TEST_FUNCTION(on_http_bytes_recv_small_example_fail)
     ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     STRICT_EXPECTED_CALL(http_header_create());
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     setup_http_header_item("Date");
     setup_http_header_item("Accept-Ranges");
     setup_http_header_item("Content-Type");
     setup_http_header_item("content-length");
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     umock_c_negative_tests_snapshot();
 
@@ -535,28 +535,28 @@ TEST_FUNCTION(on_http_bytes_recv_example_2_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_header_create());
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("Date");
     setup_http_header_item("X-Content-Type-Options");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("Expires");
     setup_http_header_item("Cache-Control");
     setup_http_header_item("X-Hudson-Theme");
     setup_http_header_item("Content-Type");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("X-Hudson");
     setup_http_header_item("X-Jenkins");
     setup_http_header_item("X-Jenkins-Session");
     setup_http_header_item("X-Hudson-CLI-Port");
     setup_http_header_item("X-Jenkins-CLI-Port");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("X-Jenkins-CLI2-Port");
     setup_http_header_item("X-Frame-Options");
     setup_http_header_item("content-length");
     setup_http_header_item("Server");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     size_t count = sizeof(TEST_HTTP_EXAMPLE_2)/sizeof(TEST_HTTP_EXAMPLE_2[0]);
@@ -583,14 +583,14 @@ TEST_FUNCTION(on_http_bytes_recv_no_content_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_header_create());
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("content-length");
     setup_http_header_item("Server");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("date");
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     size_t count = sizeof(TEST_HTTP_NO_CONTENT_EXAMPLE)/sizeof(TEST_HTTP_NO_CONTENT_EXAMPLE[0]);
@@ -617,18 +617,18 @@ TEST_FUNCTION(on_http_bytes_recv_chunked_content_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_header_create());
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("date");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("content-length");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("Transfer-Encoding");
 
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, 18));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, 9));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, 18));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, 9));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     size_t count = sizeof(TEST_HTTP_CHUNK_EXAMPLE)/sizeof(TEST_HTTP_CHUNK_EXAMPLE[0]);
@@ -655,25 +655,25 @@ TEST_FUNCTION(on_http_bytes_recv_chunked_IRL_content_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_header_create());
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("date");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     setup_http_header_item("Content-Type");
     setup_http_header_item("Transfer-Encoding");
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     size_t count = sizeof(TEST_HTTP_CHUNK_EXAMPLE_IRL_2)/sizeof(TEST_HTTP_CHUNK_EXAMPLE_IRL_2[0]);

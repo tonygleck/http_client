@@ -165,24 +165,24 @@ TEST_FUNCTION_CLEANUP(method_cleanup)
 
 static void http_header_create_mocks(void)
 {
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(item_list_create(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_create(IGNORED_ARG, IGNORED_ARG));
 }
 
 static void setup_http_header_add_mocks(void)
 {
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(clone_string(IGNORED_PTR_ARG, TEST_HEADER_NAME_1));
-    STRICT_EXPECTED_CALL(clone_string(IGNORED_PTR_ARG, TEST_HEADER_VALUE_1));
-    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(clone_string(IGNORED_ARG, TEST_HEADER_NAME_1));
+    STRICT_EXPECTED_CALL(clone_string(IGNORED_ARG, TEST_HEADER_VALUE_1));
+    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_ARG, IGNORED_ARG));
 }
 
 static void setup_http_header_add_partial_mocks(void)
 {
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(clone_string_with_size(IGNORED_PTR_ARG, TEST_HEADER_NAME_1, PARTIAL_TEST_HEADER_LEN));
-    STRICT_EXPECTED_CALL(clone_string_with_size(IGNORED_PTR_ARG, TEST_HEADER_VALUE_1, PARTIAL_TEST_HEADER_VAL_LEN));
-    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(clone_string_with_size(IGNORED_ARG, TEST_HEADER_NAME_1, PARTIAL_TEST_HEADER_LEN));
+    STRICT_EXPECTED_CALL(clone_string_with_size(IGNORED_ARG, TEST_HEADER_VALUE_1, PARTIAL_TEST_HEADER_VAL_LEN));
+    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_ARG, IGNORED_ARG));
 }
 
 TEST_FUNCTION(http_header_create_succeed)
@@ -235,8 +235,8 @@ TEST_FUNCTION(http_header_destroy_succeed)
     HTTP_HEADERS_HANDLE handle = http_header_create();
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     http_header_destroy(handle);
@@ -433,7 +433,7 @@ TEST_FUNCTION(http_header_remove_no_items_succeed)
     ASSERT_ARE_EQUAL(int, 0, result);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG));
 
     // act
     result = http_header_remove(handle, TEST_HEADER_NAME_1);
@@ -468,9 +468,9 @@ TEST_FUNCTION(http_header_remove_items_succeed)
     ASSERT_ARE_EQUAL(int, 0, result);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG)).SetReturn(1);
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, 0));
-    STRICT_EXPECTED_CALL(item_list_remove_item(IGNORED_PTR_ARG, 0));
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1);
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, 0));
+    STRICT_EXPECTED_CALL(item_list_remove_item(IGNORED_ARG, 0));
 
     // act
     result = http_header_remove(handle, TEST_HEADER_NAME_1);
@@ -521,8 +521,8 @@ TEST_FUNCTION(http_header_get_value_succeed)
     ASSERT_ARE_EQUAL(int, 0, http_header_add(handle, TEST_HEADER_NAME_1, TEST_HEADER_VALUE_1));
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG)).SetReturn(1);
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, 0));
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1);
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, 0));
 
     // act
     const char* result = http_header_get_value(handle, TEST_HEADER_NAME_1);
@@ -542,9 +542,9 @@ TEST_FUNCTION(http_header_get_value_2_loop_succeed)
     ASSERT_ARE_EQUAL(int, 0, http_header_add(handle, TEST_HEADER_NAME_1, TEST_HEADER_VALUE_1));
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG)).SetReturn(2);
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, 0)).SetReturn(NULL);
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, 1));
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(2);
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, 0)).SetReturn(NULL);
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, 1));
 
     // act
     const char* result = http_header_get_value(handle, TEST_HEADER_NAME_1);
@@ -580,7 +580,7 @@ TEST_FUNCTION(http_header_get_count_succeed)
     HTTP_HEADERS_HANDLE handle = http_header_create();
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG)).SetReturn(1);
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1);
 
     // act
     size_t result = http_header_get_count(handle);
@@ -653,7 +653,7 @@ TEST_FUNCTION(http_header_get_name_value_pair_succeed)
     ASSERT_ARE_EQUAL(int, 0, http_header_add(handle, TEST_HEADER_NAME_1, TEST_HEADER_VALUE_1));
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, 0));
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, 0));
 
     // act
     const char* name;
@@ -677,7 +677,7 @@ TEST_FUNCTION(http_header_get_name_value_pair_get_item_fail)
     ASSERT_ARE_EQUAL(int, 0, http_header_add(handle, TEST_HEADER_NAME_1, TEST_HEADER_VALUE_1));
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, 0)).SetReturn(NULL);
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, 0)).SetReturn(NULL);
 
     // act
     const char* name;
@@ -712,7 +712,7 @@ TEST_FUNCTION(http_header_clear_succeed)
     HTTP_HEADERS_HANDLE handle = http_header_create();
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(item_list_clear(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(item_list_clear(IGNORED_ARG));
 
     // act
     int result = http_header_clear(handle);
