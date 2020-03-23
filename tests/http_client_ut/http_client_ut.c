@@ -335,62 +335,62 @@ TEST_FUNCTION_CLEANUP(method_cleanup)
 
 static void setup_http_client_create_mocks(void)
 {
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(http_codec_create(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_create(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_create(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_codec_create(IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_create(IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_create(IGNORED_ARG, IGNORED_ARG));
 }
 
 static void setup_http_client_execute_request_mocks(bool add_content)
 {
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(clone_string(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(clone_string(IGNORED_ARG, IGNORED_ARG));
     if (add_content)
     {
-        STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     }
-    STRICT_EXPECTED_CALL(xio_client_query_endpoint(IGNORED_PTR_ARG, IGNORED_PTR_ARG)).CallCannotFail();
-    STRICT_EXPECTED_CALL(http_header_get_count(IGNORED_PTR_ARG)).SetReturn(1).CallCannotFail();
-    STRICT_EXPECTED_CALL(http_header_get_name_value_pair(IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
+    STRICT_EXPECTED_CALL(xio_client_query_endpoint(IGNORED_ARG, IGNORED_ARG)).CallCannotFail();
+    STRICT_EXPECTED_CALL(http_header_get_count(IGNORED_ARG)).SetReturn(1).CallCannotFail();
+    STRICT_EXPECTED_CALL(http_header_get_name_value_pair(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG))
         .CopyOutArgumentBuffer(3, &TEST_HEADER_NAME_1, sizeof(TEST_HEADER_NAME_1))
         .CopyOutArgumentBuffer(4, &TEST_HEADER_VALUE_1, sizeof(TEST_HEADER_VALUE_1));
-    STRICT_EXPECTED_CALL(item_list_add_copy(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(item_list_add_copy(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_ARG, IGNORED_ARG));
 }
 
 static void setup_http_client_execute_request_hostname_header_mocks(bool add_content)
 {
-    STRICT_EXPECTED_CALL(malloc(IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(clone_string(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(malloc(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(clone_string(IGNORED_ARG, IGNORED_ARG));
     if (add_content)
     {
-        STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
+        STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     }
-    STRICT_EXPECTED_CALL(xio_client_query_endpoint(IGNORED_PTR_ARG, IGNORED_PTR_ARG)).CallCannotFail();
-    STRICT_EXPECTED_CALL(http_header_get_count(IGNORED_PTR_ARG)).SetReturn(1).CallCannotFail();
-    STRICT_EXPECTED_CALL(http_header_get_name_value_pair(IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
+    STRICT_EXPECTED_CALL(xio_client_query_endpoint(IGNORED_ARG, IGNORED_ARG)).CallCannotFail();
+    STRICT_EXPECTED_CALL(http_header_get_count(IGNORED_ARG)).SetReturn(1).CallCannotFail();
+    STRICT_EXPECTED_CALL(http_header_get_name_value_pair(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG))
         .CopyOutArgumentBuffer(3, &TEST_HEADER_HOSTNAME, sizeof(TEST_HEADER_HOSTNAME))
         .CopyOutArgumentBuffer(4, &TEST_HEADER_VALUE_1, sizeof(TEST_HEADER_VALUE_1));
-    STRICT_EXPECTED_CALL(item_list_add_copy(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(item_list_add_copy(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_add_item(IGNORED_ARG, IGNORED_ARG));
 }
 
 static void setup_http_client_process_item_mocks(bool add_content)
 {
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG)).SetReturn(1).CallCannotFail();
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(xio_client_send(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1).CallCannotFail();
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_client_send(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     if (add_content)
     {
-        STRICT_EXPECTED_CALL(xio_client_send(IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+        STRICT_EXPECTED_CALL(xio_client_send(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     }
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_remove_item(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_remove_item(IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 }
 
 TEST_FUNCTION(http_client_create_succeed)
@@ -456,10 +456,10 @@ TEST_FUNCTION(http_client_destroy_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(http_codec_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(free(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(http_codec_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 
     // act
     http_client_destroy(handle);
@@ -508,7 +508,7 @@ TEST_FUNCTION(http_client_open_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_codec_get_recv_function());
-    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
@@ -550,7 +550,7 @@ TEST_FUNCTION(http_client_open_fail)
     int negativeTestsInitResult = umock_c_negative_tests_init();
     ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
-    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     umock_c_negative_tests_snapshot();
 
     // act
@@ -596,7 +596,7 @@ TEST_FUNCTION(http_client_close_state_open_succeed)
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_close(handle, test_on_close_complete, NULL);
@@ -616,7 +616,7 @@ TEST_FUNCTION(http_client_close_state_opening_succeed)
     (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_close(handle, test_on_close_complete, NULL);
@@ -634,7 +634,7 @@ TEST_FUNCTION(http_client_close_on_error_succeed)
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
-    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG)).SetReturn(__LINE__);
+    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG)).SetReturn(__LINE__);
     http_client_close(handle, test_on_close_complete, NULL);
     umock_c_reset_all_calls();
 
@@ -726,6 +726,48 @@ TEST_FUNCTION(http_client_execute_request_content_succeed)
     http_client_destroy(handle);
 }
 
+TEST_FUNCTION(http_client_execute_request_content_patch_succeed)
+{
+    // arrange
+    HTTP_CLIENT_HANDLE handle = http_client_create();
+    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    umock_c_reset_all_calls();
+
+    setup_http_client_execute_request_mocks(true);
+
+    // act
+    int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_PATCH, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    (void)http_client_close(handle, test_on_close_complete, NULL);
+    http_client_destroy(handle);
+}
+
+TEST_FUNCTION(http_client_execute_request_content_delete_succeed)
+{
+    // arrange
+    HTTP_CLIENT_HANDLE handle = http_client_create();
+    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    umock_c_reset_all_calls();
+
+    setup_http_client_execute_request_mocks(true);
+
+    // act
+    int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_DELETE, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 0, result);
+    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    (void)http_client_close(handle, test_on_close_complete, NULL);
+    http_client_destroy(handle);
+}
+
 TEST_FUNCTION(http_client_execute_request_fail)
 {
     // arrange
@@ -803,7 +845,7 @@ TEST_FUNCTION(http_client_process_item_opening_succeed)
     (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
 
     // act
     http_client_process_item(handle);
@@ -837,8 +879,8 @@ TEST_FUNCTION(http_client_process_item_no_items_succeed)
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG));
+    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG));
 
     // act
     http_client_process_item(handle);
@@ -985,9 +1027,9 @@ TEST_FUNCTION(http_client_process_item_open_get_item_fail_succeed)
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_PTR_ARG));
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_PTR_ARG)).SetReturn(1);
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_PTR_ARG, IGNORED_NUM_ARG)).SetReturn(NULL);
+    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1);
+    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, IGNORED_ARG)).SetReturn(NULL);
 
     // act
     http_client_process_item(handle);
@@ -1023,7 +1065,7 @@ TEST_FUNCTION(http_client_set_trace_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(http_codec_set_trace(IGNORED_PTR_ARG, true));
+    STRICT_EXPECTED_CALL(http_codec_set_trace(IGNORED_ARG, true));
 
     // act
     int result = http_client_set_trace(handle, true);
@@ -1042,7 +1084,7 @@ TEST_FUNCTION(http_client_set_trace_fail)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(http_codec_set_trace(IGNORED_PTR_ARG, true)).SetReturn(__LINE__);
+    STRICT_EXPECTED_CALL(http_codec_set_trace(IGNORED_ARG, true)).SetReturn(__LINE__);
 
     // act
     int result = http_client_set_trace(handle, true);
@@ -1083,8 +1125,8 @@ TEST_FUNCTION(on_codec_recv_callback_succeed)
     recv_data.recv_header = TEST_HTTP_HEADER;
     recv_data.http_content = g_buffer_data;
 
-    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_PTR_ARG)).SetReturn(g_add_copy_item);
-    //STRICT_EXPECTED_CALL(test_on_request_callback(IGNORED_PTR_ARG, HTTP_CLIENT_OK, IGNORED_PTR_ARG, IGNORED_NUM_ARG, recv_data.status_code, recv_data.recv_header));
+    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_ARG)).SetReturn(g_add_copy_item);
+    //STRICT_EXPECTED_CALL(test_on_request_callback(IGNORED_ARG, HTTP_CLIENT_OK, IGNORED_ARG, IGNORED_ARG, recv_data.status_code, recv_data.recv_header));
 
     // act
     g_data_callback(data_cb_user_ctx, HTTP_CODEC_CB_RESULT_OK, &recv_data);
@@ -1111,7 +1153,7 @@ TEST_FUNCTION(on_codec_recv_callback_get_front_NULL_fail)
     recv_data.recv_header = TEST_HTTP_HEADER;
     recv_data.http_content = g_buffer_data;
 
-    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_PTR_ARG)).SetReturn(NULL);
+    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_ARG)).SetReturn(NULL);
 
     // act
     g_data_callback(data_cb_user_ctx, HTTP_CODEC_CB_RESULT_OK, &recv_data);

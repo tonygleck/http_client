@@ -32,8 +32,8 @@ if (NOT TARGET lib-util-c)
     include_directories(${PROJECT_SOURCE_DIR}/deps/lib-util-c/inc)
 endif()
 if (NOT TARGET patchcords)
-    add_subdirectory(${PROJECT_SOURCE_DIR}/deps/libpatchcords)
-    include_directories(${PROJECT_SOURCE_DIR}/deps/libpatchcords/inc)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/deps/patchcords)
+    include_directories(${PROJECT_SOURCE_DIR}/deps/patchcords/inc)
 endif()
 
 #these are the C source files
