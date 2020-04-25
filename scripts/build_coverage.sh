@@ -14,7 +14,7 @@ mkdir -p $build_dir
 mkdir -p $coverage_dir
 pushd $build_dir
 
-cmake -Dhttp_client_ut:BOOL=ON -DCMAKE_BUILD_TYPE=Debug ../..
+cmake -Dhttp_client_ut:BOOL=ON -Dhttp_client_samples:BOOL=ON -DCMAKE_BUILD_TYPE=Debug ../..
 make -j
 ctest -C "debug" -V -T memcheck
 

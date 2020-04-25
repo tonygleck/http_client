@@ -400,7 +400,15 @@ int http_client_open(HTTP_CLIENT_HANDLE handle, XIO_INSTANCE_HANDLE xio_handle, 
         handle->open_complete_ctx = user_ctx;
         handle->on_error_cb = on_error_cb;
         handle->err_user_ctx = err_user_ctx;
-        if (xio_client_open(handle->xio_handle, on_open_complete, handle, http_codec_get_recv_function(), handle->codec_handle, on_error, handle) != 0)
+
+        XIO_CLIENT_CALLBACK_INFO client_callbacks = { 0 };
+        client_callbacks.on_bytes_received = http_codec_get_recv_function();
+        client_callbacks.on_io_error = on_error;
+        client_callbacks.on_io_open_complete = on_open_complete;
+        client_callbacks.on_bytes_received_ctx = handle->codec_handle;
+        client_callbacks.on_io_error_ctx = client_callbacks.on_io_open_complete_ctx = handle;
+
+        if (xio_client_open(handle->xio_handle, &client_callbacks) != 0)
         {
             log_error("Failure opening http client");
             result = __LINE__;

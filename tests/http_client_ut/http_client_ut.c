@@ -8,7 +8,7 @@
 #include <stddef.h>
 #endif
 
-#include "testrunnerswitcher.h"
+#include "ctest.h"
 #include "azure_macro_utils/macro_utils.h"
 #include "umock_c/umock_c.h"
 
@@ -196,10 +196,10 @@ extern "C" {
         return 0;
     }
 
-    static int my_xio_client_open(XIO_INSTANCE_HANDLE xio, ON_IO_OPEN_COMPLETE on_io_open_complete, void* on_io_open_complete_context, ON_BYTES_RECEIVED on_bytes_received, void* on_bytes_received_context, ON_IO_ERROR on_io_error, void* on_io_error_context)
+    static int my_xio_client_open(XIO_INSTANCE_HANDLE xio, const XIO_CLIENT_CALLBACK_INFO* client_callbacks)
     {
-        g_on_open_complete = on_io_open_complete;
-        g_open_user_ctx = on_io_open_complete_context;
+        g_on_open_complete = client_callbacks->on_io_open_complete;
+        g_open_user_ctx = client_callbacks->on_io_open_complete_ctx;
         return 0;
     }
 
@@ -230,24 +230,19 @@ extern "C" {
 }
 #endif
 
-static TEST_MUTEX_HANDLE test_serialize_mutex;
-
 MU_DEFINE_ENUM_STRINGS(UMOCK_C_ERROR_CODE, UMOCK_C_ERROR_CODE_VALUES)
 static void on_umock_c_error(UMOCK_C_ERROR_CODE error_code)
 {
-    ASSERT_FAIL("umock_c reported error :%s", MU_ENUM_TO_STRING(UMOCK_C_ERROR_CODE, error_code));
+    CTEST_ASSERT_FAIL("umock_c reported error :%s", MU_ENUM_TO_STRING(UMOCK_C_ERROR_CODE, error_code));
 }
 
-BEGIN_TEST_SUITE(http_client_ut)
+CTEST_BEGIN_TEST_SUITE(http_client_ut)
 
-TEST_SUITE_INITIALIZE(suite_init)
+CTEST_SUITE_INITIALIZE()
 {
-    test_serialize_mutex = TEST_MUTEX_CREATE();
-    ASSERT_IS_NOT_NULL(test_serialize_mutex);
-
     umock_c_init(on_umock_c_error);
 
-    ASSERT_ARE_EQUAL(int, 0, umocktypes_bool_register_types());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, umocktypes_bool_register_types());
 
     REGISTER_UMOCK_ALIAS_TYPE(ITEM_LIST_DESTROY_ITEM, void*);
     REGISTER_UMOCK_ALIAS_TYPE(HTTP_HEADERS_HANDLE, void*);
@@ -307,18 +302,13 @@ TEST_SUITE_INITIALIZE(suite_init)
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(http_codec_set_trace, __LINE__);
 }
 
-TEST_SUITE_CLEANUP(suite_cleanup)
+CTEST_SUITE_CLEANUP()
 {
     umock_c_deinit();
-    TEST_MUTEX_DESTROY(test_serialize_mutex);
 }
 
-TEST_FUNCTION_INITIALIZE(method_init)
+CTEST_FUNCTION_INITIALIZE()
 {
-    if (TEST_MUTEX_ACQUIRE(test_serialize_mutex))
-    {
-        ASSERT_FAIL("Could not acquire test serialization mutex.");
-    }
     umock_c_reset_all_calls();
     g_list_added_item = NULL;
     g_on_open_complete = NULL;
@@ -328,9 +318,8 @@ TEST_FUNCTION_INITIALIZE(method_init)
     g_add_copy_item = NULL;
 }
 
-TEST_FUNCTION_CLEANUP(method_cleanup)
+CTEST_FUNCTION_CLEANUP()
 {
-    TEST_MUTEX_RELEASE(test_serialize_mutex);
 }
 
 static void setup_http_client_create_mocks(void)
@@ -393,7 +382,7 @@ static void setup_http_client_process_item_mocks(bool add_content)
     STRICT_EXPECTED_CALL(free(IGNORED_ARG));
 }
 
-TEST_FUNCTION(http_client_create_succeed)
+CTEST_FUNCTION(http_client_create_succeed)
 {
     // arrange
     setup_http_client_create_mocks();
@@ -402,18 +391,18 @@ TEST_FUNCTION(http_client_create_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
 
     // assert
-    ASSERT_IS_NOT_NULL(handle);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_IS_NOT_NULL(handle);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_create_fail)
+CTEST_FUNCTION(http_client_create_fail)
 {
     // arrange
     int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+    CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     setup_http_client_create_mocks();
     umock_c_negative_tests_snapshot();
@@ -430,14 +419,14 @@ TEST_FUNCTION(http_client_create_fail)
             HTTP_CLIENT_HANDLE handle = http_client_create();
 
             // assert
-            ASSERT_IS_NULL(handle, "http_client_create failure %d/%d", (int)index, (int)count);
+            CTEST_ASSERT_IS_NULL(handle, "http_client_create failure %d/%d", (int)index, (int)count);
         }
     }
     // cleanup
     umock_c_negative_tests_deinit();
 }
 
-TEST_FUNCTION(http_client_destroy_handle_NULL_succeed)
+CTEST_FUNCTION(http_client_destroy_handle_NULL_succeed)
 {
     // arrange
 
@@ -445,12 +434,12 @@ TEST_FUNCTION(http_client_destroy_handle_NULL_succeed)
     http_client_destroy(NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
 }
 
-TEST_FUNCTION(http_client_destroy_succeed)
+CTEST_FUNCTION(http_client_destroy_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -465,12 +454,12 @@ TEST_FUNCTION(http_client_destroy_succeed)
     http_client_destroy(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
 }
 
-TEST_FUNCTION(http_client_open_handle_NULL_fail)
+CTEST_FUNCTION(http_client_open_handle_NULL_fail)
 {
     // arrange
 
@@ -478,13 +467,13 @@ TEST_FUNCTION(http_client_open_handle_NULL_fail)
     int result = http_client_open(NULL, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
 }
 
-TEST_FUNCTION(http_client_open_xio_handle_NULL_fail)
+CTEST_FUNCTION(http_client_open_xio_handle_NULL_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -494,35 +483,35 @@ TEST_FUNCTION(http_client_open_xio_handle_NULL_fail)
     int result = http_client_open(handle, NULL, test_on_open_complete, NULL, test_on_error, NULL);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_open_succeed)
+CTEST_FUNCTION(http_client_open_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_codec_get_recv_function());
-    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG));
 
     // act
     int result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_open_previously_open_fail)
+CTEST_FUNCTION(http_client_open_previously_open_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -533,24 +522,24 @@ TEST_FUNCTION(http_client_open_previously_open_fail)
     result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_open_fail)
+CTEST_FUNCTION(http_client_open_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
     int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+    CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
-    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG));
     umock_c_negative_tests_snapshot();
 
     // act
@@ -565,7 +554,7 @@ TEST_FUNCTION(http_client_open_fail)
             int result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
 
             // assert
-            ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_client_create failure %d/%d", (int)index, (int)count);
+            CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_client_create failure %d/%d", (int)index, (int)count);
         }
     }
 
@@ -574,7 +563,7 @@ TEST_FUNCTION(http_client_open_fail)
     umock_c_negative_tests_deinit();
 }
 
-TEST_FUNCTION(http_client_close_handle_NULL)
+CTEST_FUNCTION(http_client_close_handle_NULL)
 {
     // arrange
 
@@ -582,13 +571,13 @@ TEST_FUNCTION(http_client_close_handle_NULL)
     int result = http_client_close(NULL, test_on_close_complete, NULL);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
 }
 
-TEST_FUNCTION(http_client_close_state_open_succeed)
+CTEST_FUNCTION(http_client_close_state_open_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -602,14 +591,14 @@ TEST_FUNCTION(http_client_close_state_open_succeed)
     int result = http_client_close(handle, test_on_close_complete, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_close_state_opening_succeed)
+CTEST_FUNCTION(http_client_close_state_opening_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -622,14 +611,14 @@ TEST_FUNCTION(http_client_close_state_opening_succeed)
     int result = http_client_close(handle, test_on_close_complete, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_close_on_error_succeed)
+CTEST_FUNCTION(http_client_close_on_error_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -642,14 +631,14 @@ TEST_FUNCTION(http_client_close_on_error_succeed)
     int result = http_client_close(handle, test_on_close_complete, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_execute_request_handle_NULL_fail)
+CTEST_FUNCTION(http_client_execute_request_handle_NULL_fail)
 {
     // arrange
 
@@ -657,13 +646,13 @@ TEST_FUNCTION(http_client_execute_request_handle_NULL_fail)
     int result = http_client_execute_request(NULL, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
 }
 
-TEST_FUNCTION(http_client_execute_request_NULL_content_succeed)
+CTEST_FUNCTION(http_client_execute_request_NULL_content_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -676,15 +665,15 @@ TEST_FUNCTION(http_client_execute_request_NULL_content_succeed)
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_execute_request_hostname_header_succeed)
+CTEST_FUNCTION(http_client_execute_request_hostname_header_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -697,15 +686,15 @@ TEST_FUNCTION(http_client_execute_request_hostname_header_succeed)
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_execute_request_content_succeed)
+CTEST_FUNCTION(http_client_execute_request_content_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -718,15 +707,15 @@ TEST_FUNCTION(http_client_execute_request_content_succeed)
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_execute_request_content_patch_succeed)
+CTEST_FUNCTION(http_client_execute_request_content_patch_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -739,15 +728,15 @@ TEST_FUNCTION(http_client_execute_request_content_patch_succeed)
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_PATCH, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_execute_request_content_delete_succeed)
+CTEST_FUNCTION(http_client_execute_request_content_delete_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -760,15 +749,15 @@ TEST_FUNCTION(http_client_execute_request_content_delete_succeed)
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_DELETE, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_execute_request_fail)
+CTEST_FUNCTION(http_client_execute_request_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -776,7 +765,7 @@ TEST_FUNCTION(http_client_execute_request_fail)
     umock_c_reset_all_calls();
 
     int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+    CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     setup_http_client_execute_request_mocks(false);
     umock_c_negative_tests_snapshot();
@@ -793,7 +782,7 @@ TEST_FUNCTION(http_client_execute_request_fail)
             int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
 
             // assert
-            ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_client_create failure %d/%d", (int)index, (int)count);
+            CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_client_create failure %d/%d", (int)index, (int)count);
         }
     }
     // cleanup
@@ -803,7 +792,7 @@ TEST_FUNCTION(http_client_execute_request_fail)
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_execute_request_w_content_fail)
+CTEST_FUNCTION(http_client_execute_request_w_content_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -811,7 +800,7 @@ TEST_FUNCTION(http_client_execute_request_w_content_fail)
     umock_c_reset_all_calls();
 
     int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+    CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     setup_http_client_execute_request_mocks(true);
     umock_c_negative_tests_snapshot();
@@ -828,7 +817,7 @@ TEST_FUNCTION(http_client_execute_request_w_content_fail)
             int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
 
             // assert
-            ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_client_create failure %d/%d", (int)index, (int)count);
+            CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_client_create failure %d/%d", (int)index, (int)count);
         }
     }
     // cleanup
@@ -838,7 +827,7 @@ TEST_FUNCTION(http_client_execute_request_w_content_fail)
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_opening_succeed)
+CTEST_FUNCTION(http_client_process_item_opening_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -851,14 +840,14 @@ TEST_FUNCTION(http_client_process_item_opening_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_handle_succeed)
+CTEST_FUNCTION(http_client_process_item_handle_succeed)
 {
     // arrange
 
@@ -866,12 +855,12 @@ TEST_FUNCTION(http_client_process_item_handle_succeed)
     http_client_process_item(NULL);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
 }
 
-TEST_FUNCTION(http_client_process_item_no_items_succeed)
+CTEST_FUNCTION(http_client_process_item_no_items_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -886,14 +875,14 @@ TEST_FUNCTION(http_client_process_item_no_items_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_open_post_fail)
+CTEST_FUNCTION(http_client_process_item_open_post_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -903,7 +892,7 @@ TEST_FUNCTION(http_client_process_item_open_post_fail)
     umock_c_reset_all_calls();
 
     int negativeTestsInitResult = umock_c_negative_tests_init();
-    ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
+    CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     setup_http_client_process_item_mocks(true);
 
@@ -930,7 +919,7 @@ TEST_FUNCTION(http_client_process_item_open_post_fail)
     umock_c_negative_tests_deinit();
 }
 
-TEST_FUNCTION(http_client_process_item_open_post_succeed)
+CTEST_FUNCTION(http_client_process_item_open_post_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -945,14 +934,14 @@ TEST_FUNCTION(http_client_process_item_open_post_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_open_get_succeed)
+CTEST_FUNCTION(http_client_process_item_open_get_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -967,14 +956,14 @@ TEST_FUNCTION(http_client_process_item_open_get_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_open_option_succeed)
+CTEST_FUNCTION(http_client_process_item_open_option_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -989,14 +978,14 @@ TEST_FUNCTION(http_client_process_item_open_option_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_open_put_succeed)
+CTEST_FUNCTION(http_client_process_item_open_put_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -1011,14 +1000,14 @@ TEST_FUNCTION(http_client_process_item_open_put_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_open_get_item_fail_succeed)
+CTEST_FUNCTION(http_client_process_item_open_get_item_fail_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -1036,14 +1025,14 @@ TEST_FUNCTION(http_client_process_item_open_get_item_fail_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_process_item_not_connected_succeed)
+CTEST_FUNCTION(http_client_process_item_not_connected_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -1053,13 +1042,13 @@ TEST_FUNCTION(http_client_process_item_not_connected_succeed)
     http_client_process_item(handle);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_set_trace_succeed)
+CTEST_FUNCTION(http_client_set_trace_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -1071,14 +1060,14 @@ TEST_FUNCTION(http_client_set_trace_succeed)
     int result = http_client_set_trace(handle, true);
 
     // assert
-    ASSERT_ARE_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_set_trace_fail)
+CTEST_FUNCTION(http_client_set_trace_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -1090,14 +1079,14 @@ TEST_FUNCTION(http_client_set_trace_fail)
     int result = http_client_set_trace(handle, true);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(http_client_set_trace_handle_NULL_fail)
+CTEST_FUNCTION(http_client_set_trace_handle_NULL_fail)
 {
     // arrange
 
@@ -1105,13 +1094,13 @@ TEST_FUNCTION(http_client_set_trace_handle_NULL_fail)
     int result = http_client_set_trace(NULL, true);
 
     // assert
-    ASSERT_ARE_NOT_EQUAL(int, 0, result);
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
 }
 
-TEST_FUNCTION(on_codec_recv_callback_succeed)
+CTEST_FUNCTION(on_codec_recv_callback_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -1132,14 +1121,14 @@ TEST_FUNCTION(on_codec_recv_callback_succeed)
     g_data_callback(data_cb_user_ctx, HTTP_CODEC_CB_RESULT_OK, &recv_data);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-TEST_FUNCTION(on_codec_recv_callback_get_front_NULL_fail)
+CTEST_FUNCTION(on_codec_recv_callback_get_front_NULL_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -1159,11 +1148,11 @@ TEST_FUNCTION(on_codec_recv_callback_get_front_NULL_fail)
     g_data_callback(data_cb_user_ctx, HTTP_CODEC_CB_RESULT_OK, &recv_data);
 
     // assert
-    ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
 
     // cleanup
     (void)http_client_close(handle, test_on_close_complete, NULL);
     http_client_destroy(handle);
 }
 
-END_TEST_SUITE(http_client_ut)
+CTEST_END_TEST_SUITE(http_client_ut)
