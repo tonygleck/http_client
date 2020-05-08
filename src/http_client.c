@@ -12,6 +12,7 @@
 #include "lib-util-c/buffer_alloc.h"
 
 #include "patchcords/xio_client.h"
+#include "patchcords/xio_socket.h"
 
 #include "http_client/http_client.h"
 #include "http_client/http_headers.h"
@@ -331,10 +332,40 @@ static void request_list_destroy_cb(void* user_ctx, void* remove_item)
     }
 }
 
+static int create_connection(HTTP_CLIENT_INFO* client_info, const HTTP_ADDRESS* http_address)
+{
+    int result;
+    SOCKETIO_CONFIG config = {0};
+    config.hostname = http_address->hostname;
+    config.port = http_address->port;
+    config.address_type = ADDRESS_TYPE_IP;
+
+    XIO_CLIENT_CALLBACK_INFO callback_info;
+    callback_info.on_bytes_received = http_codec_get_recv_function();
+    callback_info.on_bytes_received_ctx = client_info->codec_handle;
+    callback_info.on_io_error = on_error;
+    callback_info.on_io_error_ctx = client_info;
+
+    if ((client_info->xio_handle = xio_client_create(xio_socket_get_interface(), &config, &callback_info)) == NULL)
+    {
+        log_error("Failure creating client connection");
+        result = __LINE__;
+    }
+    else if (xio_client_open(client_info->xio_handle, on_open_complete, client_info) != 0)
+    {
+        log_error("Failure opening http client");
+        result = __LINE__;
+    }
+    else
+    {
+        result = 0;
+    }
+    return result;
+}
+
 HTTP_CLIENT_HANDLE http_client_create(void)
 {
     HTTP_CLIENT_INFO* result;
-
     if ((result = (HTTP_CLIENT_INFO*)malloc(sizeof(HTTP_CLIENT_INFO))) == NULL)
     {
         log_error("Failure allocating http client info");
@@ -373,6 +404,7 @@ void http_client_destroy(HTTP_CLIENT_HANDLE handle)
 {
     if (handle != NULL)
     {
+        xio_client_destroy(handle->xio_handle);
         http_codec_destroy(handle->codec_handle);
         item_list_destroy(handle->recv_callback_list);
         item_list_destroy(handle->request_list);
@@ -380,12 +412,12 @@ void http_client_destroy(HTTP_CLIENT_HANDLE handle)
     }
 }
 
-int http_client_open(HTTP_CLIENT_HANDLE handle, XIO_INSTANCE_HANDLE xio_handle, ON_HTTP_OPEN_COMPLETE_CALLBACK on_open_complete_cb, void* user_ctx, ON_HTTP_ERROR_CALLBACK on_error_cb, void* err_user_ctx)
+int http_client_open(HTTP_CLIENT_HANDLE handle, const HTTP_ADDRESS* http_address, ON_HTTP_OPEN_COMPLETE_CALLBACK on_open_complete_cb, void* open_user_ctx, ON_HTTP_ERROR_CALLBACK on_error_cb, void* err_user_ctx)
 {
     int result;
-    if (handle == NULL || xio_handle == NULL)
+    if (handle == NULL || http_address == NULL)
     {
-        log_error("Invalid paramenter handle: %p, xio_handle: %p", handle, xio_handle);
+        log_error("Invalid paramenter handle: %p, http_address: %p", handle, http_address);
         result = __LINE__;
     }
     else if (handle->state != CLIENT_STATE_NOT_CONN)
@@ -393,31 +425,19 @@ int http_client_open(HTTP_CLIENT_HANDLE handle, XIO_INSTANCE_HANDLE xio_handle, 
         log_error("Open attempt on a client that is not closed");
         result = __LINE__;
     }
+    else if (create_connection(handle, http_address) != 0)
+    {
+        log_error("Failure attempting to connect to client");
+        result = __LINE__;
+    }
     else
     {
-        handle->xio_handle = xio_handle;
         handle->on_open_complete_cb = on_open_complete_cb;
-        handle->open_complete_ctx = user_ctx;
+        handle->open_complete_ctx = open_user_ctx;
         handle->on_error_cb = on_error_cb;
         handle->err_user_ctx = err_user_ctx;
-
-        XIO_CLIENT_CALLBACK_INFO client_callbacks = { 0 };
-        client_callbacks.on_bytes_received = http_codec_get_recv_function();
-        client_callbacks.on_io_error = on_error;
-        client_callbacks.on_io_open_complete = on_open_complete;
-        client_callbacks.on_bytes_received_ctx = handle->codec_handle;
-        client_callbacks.on_io_error_ctx = client_callbacks.on_io_open_complete_ctx = handle;
-
-        if (xio_client_open(handle->xio_handle, &client_callbacks) != 0)
-        {
-            log_error("Failure opening http client");
-            result = __LINE__;
-        }
-        else
-        {
-            handle->state = CLIENT_STATE_OPENING;
-            result = 0;
-        }
+        handle->state = CLIENT_STATE_OPENING;
+        result = 0;
     }
     return result;
 }
@@ -472,11 +492,6 @@ int http_client_execute_request(HTTP_CLIENT_HANDLE handle, HTTP_CLIENT_REQUEST_T
         log_error("Invalid paramenter handle is NULL");
         result = __LINE__;
     }
-    /*else if (handle->state != CLIENT_STATE_OPEN)
-    {
-        log_error("Failure sending request with a non-open state");
-        result = __LINE__;
-    }*/
     else
     {
         HTTP_RESP_INFO resp_info;

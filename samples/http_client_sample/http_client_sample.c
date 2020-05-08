@@ -6,8 +6,6 @@
 #include <stdint.h>
 
 #include "http_client/http_client.h"
-#include "patchcords/xio_client.h"
-#include "patchcords/xio_socket.h"
 
 typedef struct SAMPLE_DATA_TAG
 {
@@ -53,23 +51,18 @@ void on_error(void* context, HTTP_CLIENT_RESULT error_result)
 
 int main()
 {
-    SOCKETIO_CONFIG config = {0};
-    config.hostname = "httpbin.org";
-    config.port = 80;
-    config.address_type = ADDRESS_TYPE_IP;
-
     SAMPLE_DATA data = {0};
     HTTP_CLIENT_HANDLE http_client;
-    XIO_INSTANCE_HANDLE xio_handle = xio_client_create(xio_socket_get_interface(), &config);
-    if (xio_handle == NULL)
-    {
-        printf("Failure creating socket");
-    }
-    else if ((http_client = http_client_create()) == NULL)
+
+    HTTP_ADDRESS http_address = {0};
+    http_address.hostname = "httpbin.org";
+    http_address.port = 80;
+
+    if ((http_client = http_client_create()) == NULL)
     {
         printf("Failure creating http client");
     }
-    else if (http_client_open(http_client, xio_handle, on_open_complete, &data, on_error, NULL) != 0)
+    else if (http_client_open(http_client, &http_address, on_open_complete, &data, on_error, NULL) != 0)
     {
         printf("Failure creating http client");
     }
@@ -102,7 +95,6 @@ int main()
                 break;
             }
         } while (data.keep_running == 0);
-
         http_client_destroy(http_client);
     }
     return 0;
