@@ -36,6 +36,7 @@ static void my_mem_shim_free(void* ptr)
 #include "http_client/http_headers.h"
 #include "http_client/http_codec.h"
 #include "patchcords/xio_client.h"
+#include "patchcords/xio_socket.h"
 #undef ENABLE_MOCKS
 
 #include "http_client/http_client.h"
@@ -57,12 +58,13 @@ static const char* TEST_HEADER_HOSTNAME = "HOSTNAME";
 static const char* TEST_HEADER_VALUE_1 = "TEST_HEADER_VALUE_1";
 static const char* TEST_HEADER_NAME_1 = "TEST_HEADER_NAME_1";
 
-static XIO_INSTANCE_HANDLE TEST_XIO_HANDLE = (XIO_INSTANCE_HANDLE)0x12345;
 static HTTP_HEADERS_HANDLE TEST_HTTP_HEADER = (HTTP_HEADERS_HANDLE)0x67890;
 static HTTP_CODEC_HANDLE TEST_CODEC_HEADER = (HTTP_CODEC_HANDLE)0x987654;
 
 static unsigned char TEST_SEND_CONTENT[] = { 0x33, 0x34, 0x35 };
 static size_t TEST_CONTENT_LENGTH = 3;
+static uint16_t TEST_PORT = 8080;
+static HTTP_ADDRESS TEST_HTTP_ADDRESS = {0};
 
 static void* g_add_copy_item;
 static void* g_destroy_user_ctx;
@@ -76,6 +78,9 @@ static ITEM_LIST_HANDLE g_do_not_delete_items;
 static ON_HTTP_DATA_CALLBACK g_data_callback;
 static void* data_cb_user_ctx;
 static BYTE_BUFFER g_buffer_data;
+static ON_IO_ERROR g_on_io_error_cb;
+static void* g_on_io_error_ctx;
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -196,10 +201,23 @@ extern "C" {
         return 0;
     }
 
-    static int my_xio_client_open(XIO_INSTANCE_HANDLE xio, const XIO_CLIENT_CALLBACK_INFO* client_callbacks)
+    XIO_INSTANCE_HANDLE my_xio_client_create(const IO_INTERFACE_DESCRIPTION* io_interface_description, const void* parameters, const XIO_CLIENT_CALLBACK_INFO* client_cb)
     {
-        g_on_open_complete = client_callbacks->on_io_open_complete;
-        g_open_user_ctx = client_callbacks->on_io_open_complete_ctx;
+        (void)parameters;
+        g_on_io_error_cb = client_cb->on_io_error;
+        g_on_io_error_ctx = client_cb->on_io_error_ctx;
+        return (XIO_INSTANCE_HANDLE)my_mem_shim_malloc(1);
+    }
+
+    void my_xio_client_destroy(XIO_INSTANCE_HANDLE handle)
+    {
+        my_mem_shim_free(handle);
+    }
+
+    static int my_xio_client_open(XIO_INSTANCE_HANDLE xio, ON_IO_OPEN_COMPLETE on_io_open_complete, void* on_io_open_complete_context)
+    {
+        g_on_open_complete = on_io_open_complete;
+        g_open_user_ctx = on_io_open_complete_context;
         return 0;
     }
 
@@ -283,6 +301,9 @@ CTEST_SUITE_INITIALIZE()
     REGISTER_GLOBAL_MOCK_HOOK(byte_buffer_construct, my_byte_buffer_construct);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(byte_buffer_construct, __LINE__);
 
+    REGISTER_GLOBAL_MOCK_HOOK(xio_client_create, my_xio_client_create);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(xio_client_create, NULL);
+    REGISTER_GLOBAL_MOCK_HOOK(xio_client_destroy, my_xio_client_destroy);
     REGISTER_GLOBAL_MOCK_HOOK(xio_client_open, my_xio_client_open);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(xio_client_open, __LINE__);
     REGISTER_GLOBAL_MOCK_HOOK(xio_client_close, my_xio_client_close);
@@ -300,6 +321,9 @@ CTEST_SUITE_INITIALIZE()
     REGISTER_GLOBAL_MOCK_HOOK(http_codec_destroy, my_http_codec_destroy);
     REGISTER_GLOBAL_MOCK_RETURN(http_codec_set_trace, 0);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(http_codec_set_trace, __LINE__);
+
+    TEST_HTTP_ADDRESS.hostname = TEST_HEADER_HOSTNAME;
+    TEST_HTTP_ADDRESS.port = TEST_PORT;
 }
 
 CTEST_SUITE_CLEANUP()
@@ -316,6 +340,9 @@ CTEST_FUNCTION_INITIALIZE()
     g_on_io_close_complete = NULL;
     g_on_close_user_ctx = NULL;
     g_add_copy_item = NULL;
+    g_on_io_error_cb = NULL;
+    g_on_io_error_ctx = NULL;
+
 }
 
 CTEST_FUNCTION_CLEANUP()
@@ -445,6 +472,7 @@ CTEST_FUNCTION(http_client_destroy_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
+    STRICT_EXPECTED_CALL(xio_client_destroy(IGNORED_ARG));
     STRICT_EXPECTED_CALL(http_codec_destroy(IGNORED_ARG));
     STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_ARG));
     STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_ARG));
@@ -464,7 +492,7 @@ CTEST_FUNCTION(http_client_open_handle_NULL_fail)
     // arrange
 
     // act
-    int result = http_client_open(NULL, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    int result = http_client_open(NULL, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
 
     // assert
     CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
@@ -473,7 +501,7 @@ CTEST_FUNCTION(http_client_open_handle_NULL_fail)
     // cleanup
 }
 
-CTEST_FUNCTION(http_client_open_xio_handle_NULL_fail)
+CTEST_FUNCTION(http_client_open_http_address_NULL_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
@@ -493,14 +521,17 @@ CTEST_FUNCTION(http_client_open_xio_handle_NULL_fail)
 CTEST_FUNCTION(http_client_open_succeed)
 {
     // arrange
+
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_codec_get_recv_function());
-    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_socket_get_interface());
+    STRICT_EXPECTED_CALL(xio_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     // act
-    int result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    int result = http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
 
     // assert
     CTEST_ASSERT_ARE_EQUAL(int, 0, result);
@@ -515,11 +546,11 @@ CTEST_FUNCTION(http_client_open_previously_open_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    int result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    int result = http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     // act
-    result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    result = http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
 
     // assert
     CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result);
@@ -533,13 +564,17 @@ CTEST_FUNCTION(http_client_open_previously_open_fail)
 CTEST_FUNCTION(http_client_open_fail)
 {
     // arrange
+
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
     int negativeTestsInitResult = umock_c_negative_tests_init();
     CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
-    STRICT_EXPECTED_CALL(xio_client_open(TEST_XIO_HANDLE, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_codec_get_recv_function()).CallCannotFail();
+    STRICT_EXPECTED_CALL(xio_socket_get_interface()).CallCannotFail();
+    STRICT_EXPECTED_CALL(xio_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     umock_c_negative_tests_snapshot();
 
     // act
@@ -551,7 +586,7 @@ CTEST_FUNCTION(http_client_open_fail)
             umock_c_negative_tests_reset();
             umock_c_negative_tests_fail_call(index);
 
-            int result = http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+            int result = http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
 
             // assert
             CTEST_ASSERT_ARE_NOT_EQUAL(int, 0, result, "http_client_create failure %d/%d", (int)index, (int)count);
@@ -562,6 +597,26 @@ CTEST_FUNCTION(http_client_open_fail)
     http_client_destroy(handle);
     umock_c_negative_tests_deinit();
 }
+
+CTEST_FUNCTION(http_client_on_open_complete_fail_succeed)
+{
+    // arrange
+
+    HTTP_CLIENT_HANDLE handle = http_client_create();
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
+    umock_c_reset_all_calls();
+
+    // act
+    g_on_open_complete(g_open_user_ctx, IO_OPEN_ERROR);
+
+    // assert
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    (void)http_client_close(handle, test_on_close_complete, NULL);
+    http_client_destroy(handle);
+}
+
 
 CTEST_FUNCTION(http_client_close_handle_NULL)
 {
@@ -581,11 +636,11 @@ CTEST_FUNCTION(http_client_close_state_open_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_close(handle, test_on_close_complete, NULL);
@@ -602,10 +657,10 @@ CTEST_FUNCTION(http_client_close_state_opening_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_close(handle, test_on_close_complete, NULL);
@@ -618,12 +673,48 @@ CTEST_FUNCTION(http_client_close_state_opening_succeed)
     http_client_destroy(handle);
 }
 
+CTEST_FUNCTION(http_client_on_close_complete_success)
+{
+    // arrange
+    HTTP_CLIENT_HANDLE handle = http_client_create();
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_close(handle, test_on_close_complete, NULL);
+    umock_c_reset_all_calls();
+
+    // act
+    g_on_io_close_complete(g_on_close_user_ctx);
+
+    // assert
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    http_client_destroy(handle);
+}
+
+CTEST_FUNCTION(http_client_on_socket_error_success)
+{
+    // arrange
+    HTTP_CLIENT_HANDLE handle = http_client_create();
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
+    umock_c_reset_all_calls();
+
+    // act
+    g_on_io_error_cb(g_on_io_error_ctx, IO_ERROR_GENERAL);
+
+    // assert
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    (void)http_client_close(handle, test_on_close_complete, NULL);
+    http_client_destroy(handle);
+}
+
 CTEST_FUNCTION(http_client_close_on_error_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
-    STRICT_EXPECTED_CALL(xio_client_close(TEST_XIO_HANDLE, IGNORED_ARG, IGNORED_ARG)).SetReturn(__LINE__);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
+    STRICT_EXPECTED_CALL(xio_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG)).SetReturn(__LINE__);
     http_client_close(handle, test_on_close_complete, NULL);
     umock_c_reset_all_calls();
 
@@ -656,7 +747,7 @@ CTEST_FUNCTION(http_client_execute_request_NULL_content_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     setup_http_client_execute_request_mocks(false);
@@ -677,7 +768,7 @@ CTEST_FUNCTION(http_client_execute_request_hostname_header_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     setup_http_client_execute_request_hostname_header_mocks(false);
@@ -698,7 +789,7 @@ CTEST_FUNCTION(http_client_execute_request_content_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     setup_http_client_execute_request_mocks(true);
@@ -719,7 +810,7 @@ CTEST_FUNCTION(http_client_execute_request_content_patch_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     setup_http_client_execute_request_mocks(true);
@@ -740,7 +831,7 @@ CTEST_FUNCTION(http_client_execute_request_content_delete_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     setup_http_client_execute_request_mocks(true);
@@ -761,7 +852,7 @@ CTEST_FUNCTION(http_client_execute_request_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     int negativeTestsInitResult = umock_c_negative_tests_init();
@@ -796,7 +887,7 @@ CTEST_FUNCTION(http_client_execute_request_w_content_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     int negativeTestsInitResult = umock_c_negative_tests_init();
@@ -831,7 +922,7 @@ CTEST_FUNCTION(http_client_process_item_opening_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
@@ -864,7 +955,7 @@ CTEST_FUNCTION(http_client_process_item_no_items_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     umock_c_reset_all_calls();
 
@@ -886,7 +977,7 @@ CTEST_FUNCTION(http_client_process_item_open_post_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
@@ -923,7 +1014,7 @@ CTEST_FUNCTION(http_client_process_item_open_post_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
@@ -945,7 +1036,7 @@ CTEST_FUNCTION(http_client_process_item_open_get_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_GET, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
@@ -967,7 +1058,7 @@ CTEST_FUNCTION(http_client_process_item_open_option_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_OPTIONS, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
@@ -989,7 +1080,7 @@ CTEST_FUNCTION(http_client_process_item_open_put_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_PUT, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
@@ -1011,7 +1102,7 @@ CTEST_FUNCTION(http_client_process_item_open_get_item_fail_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
@@ -1104,7 +1195,7 @@ CTEST_FUNCTION(on_codec_recv_callback_succeed)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_GET, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
@@ -1132,7 +1223,7 @@ CTEST_FUNCTION(on_codec_recv_callback_get_front_NULL_fail)
 {
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
-    (void)http_client_open(handle, TEST_XIO_HANDLE, test_on_open_complete, NULL, test_on_error, NULL);
+    (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_GET, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
