@@ -35,8 +35,8 @@ static void my_mem_shim_free(void* ptr)
 #include "lib-util-c/buffer_alloc.h"
 #include "http_client/http_headers.h"
 #include "http_client/http_codec.h"
-#include "patchcords/xio_client.h"
-#include "patchcords/xio_socket.h"
+#include "patchcords/patchcord_client.h"
+#include "patchcords/cord_socket.h"
 #undef ENABLE_MOCKS
 
 #include "http_client/http_client.h"
@@ -44,6 +44,12 @@ static void my_mem_shim_free(void* ptr)
 #define ENABLE_MOCKS
 MOCKABLE_FUNCTION(, void, test_on_request_callback, void*, callback_ctx, HTTP_CLIENT_RESULT, request_result, const unsigned char*, content, size_t, content_length, unsigned int, status_code,
     HTTP_HEADERS_HANDLE, response_headers);
+
+// #ifdef ENABLE_MOCKS
+// #pragma message("The Value is enabled")
+// #else
+// #pragma message("The macro is not enabled")
+// #endif
 
 //MOCKABLE_FUNCTION(, void, test_on_open_complete, void*, context, HTTP_CLIENT_RESULT, open_result);
 //MOCKABLE_FUNCTION(, void, test_on_error, void*, context, HTTP_CLIENT_RESULT, error_result);
@@ -201,27 +207,27 @@ extern "C" {
         return 0;
     }
 
-    XIO_INSTANCE_HANDLE my_xio_client_create(const IO_INTERFACE_DESCRIPTION* io_interface_description, const void* parameters, const XIO_CLIENT_CALLBACK_INFO* client_cb)
+    PATCH_INSTANCE_HANDLE my_patchcord_client_create(const IO_INTERFACE_DESCRIPTION* io_interface_description, const void* parameters, const PATCHCORD_CALLBACK_INFO* client_cb)
     {
         (void)parameters;
         g_on_io_error_cb = client_cb->on_io_error;
         g_on_io_error_ctx = client_cb->on_io_error_ctx;
-        return (XIO_INSTANCE_HANDLE)my_mem_shim_malloc(1);
+        return (PATCH_INSTANCE_HANDLE)my_mem_shim_malloc(1);
     }
 
-    void my_xio_client_destroy(XIO_INSTANCE_HANDLE handle)
+    void my_patchcord_client_destroy(PATCH_INSTANCE_HANDLE handle)
     {
         my_mem_shim_free(handle);
     }
 
-    static int my_xio_client_open(XIO_INSTANCE_HANDLE xio, ON_IO_OPEN_COMPLETE on_io_open_complete, void* on_io_open_complete_context)
+    static int my_patchcord_client_open(PATCH_INSTANCE_HANDLE xio, ON_IO_OPEN_COMPLETE on_io_open_complete, void* on_io_open_complete_context)
     {
         g_on_open_complete = on_io_open_complete;
         g_open_user_ctx = on_io_open_complete_context;
         return 0;
     }
 
-    static int my_xio_client_close(XIO_INSTANCE_HANDLE xio, ON_IO_CLOSE_COMPLETE on_io_close_complete, void* callback_context)
+    static int my_patchcord_client_close(PATCH_INSTANCE_HANDLE xio, ON_IO_CLOSE_COMPLETE on_io_close_complete, void* callback_context)
     {
         g_on_io_close_complete = on_io_close_complete;
         g_on_close_user_ctx = callback_context;
@@ -266,7 +272,7 @@ CTEST_SUITE_INITIALIZE()
     REGISTER_UMOCK_ALIAS_TYPE(HTTP_HEADERS_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ITEM_LIST_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(HTTP_CLIENT_HANDLE, void*);
-    REGISTER_UMOCK_ALIAS_TYPE(XIO_INSTANCE_HANDLE, void*);
+    REGISTER_UMOCK_ALIAS_TYPE(PATCH_INSTANCE_HANDLE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ON_IO_OPEN_COMPLETE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ON_IO_CLOSE_COMPLETE, void*);
     REGISTER_UMOCK_ALIAS_TYPE(ON_BYTES_RECEIVED, void*);
@@ -301,15 +307,15 @@ CTEST_SUITE_INITIALIZE()
     REGISTER_GLOBAL_MOCK_HOOK(byte_buffer_construct, my_byte_buffer_construct);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(byte_buffer_construct, __LINE__);
 
-    REGISTER_GLOBAL_MOCK_HOOK(xio_client_create, my_xio_client_create);
-    REGISTER_GLOBAL_MOCK_FAIL_RETURN(xio_client_create, NULL);
-    REGISTER_GLOBAL_MOCK_HOOK(xio_client_destroy, my_xio_client_destroy);
-    REGISTER_GLOBAL_MOCK_HOOK(xio_client_open, my_xio_client_open);
-    REGISTER_GLOBAL_MOCK_FAIL_RETURN(xio_client_open, __LINE__);
-    REGISTER_GLOBAL_MOCK_HOOK(xio_client_close, my_xio_client_close);
-    REGISTER_GLOBAL_MOCK_FAIL_RETURN(xio_client_close, __LINE__);
-    REGISTER_GLOBAL_MOCK_RETURN(xio_client_send, 0);
-    REGISTER_GLOBAL_MOCK_FAIL_RETURN(xio_client_send, __LINE__);
+    REGISTER_GLOBAL_MOCK_HOOK(patchcord_client_create, my_patchcord_client_create);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(patchcord_client_create, NULL);
+    REGISTER_GLOBAL_MOCK_HOOK(patchcord_client_destroy, my_patchcord_client_destroy);
+    REGISTER_GLOBAL_MOCK_HOOK(patchcord_client_open, my_patchcord_client_open);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(patchcord_client_open, __LINE__);
+    REGISTER_GLOBAL_MOCK_HOOK(patchcord_client_close, my_patchcord_client_close);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(patchcord_client_close, __LINE__);
+    REGISTER_GLOBAL_MOCK_RETURN(patchcord_client_send, 0);
+    REGISTER_GLOBAL_MOCK_FAIL_RETURN(patchcord_client_send, __LINE__);
 
     REGISTER_GLOBAL_MOCK_HOOK(http_header_create, my_http_header_create);
     REGISTER_GLOBAL_MOCK_FAIL_RETURN(http_header_create, NULL);
@@ -365,7 +371,7 @@ static void setup_http_client_execute_request_mocks(bool add_content)
     {
         STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     }
-    STRICT_EXPECTED_CALL(xio_client_query_endpoint(IGNORED_ARG, IGNORED_ARG)).CallCannotFail();
+    STRICT_EXPECTED_CALL(patchcord_client_query_endpoint(IGNORED_ARG, IGNORED_ARG)).CallCannotFail();
     STRICT_EXPECTED_CALL(http_header_get_count(IGNORED_ARG)).SetReturn(1).CallCannotFail();
     STRICT_EXPECTED_CALL(http_header_get_name_value_pair(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG))
         .CopyOutArgumentBuffer(3, &TEST_HEADER_NAME_1, sizeof(TEST_HEADER_NAME_1))
@@ -382,7 +388,7 @@ static void setup_http_client_execute_request_hostname_header_mocks(bool add_con
     {
         STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     }
-    STRICT_EXPECTED_CALL(xio_client_query_endpoint(IGNORED_ARG, IGNORED_ARG)).CallCannotFail();
+    STRICT_EXPECTED_CALL(patchcord_client_query_endpoint(IGNORED_ARG, IGNORED_ARG)).CallCannotFail();
     STRICT_EXPECTED_CALL(http_header_get_count(IGNORED_ARG)).SetReturn(1).CallCannotFail();
     STRICT_EXPECTED_CALL(http_header_get_name_value_pair(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG))
         .CopyOutArgumentBuffer(3, &TEST_HEADER_HOSTNAME, sizeof(TEST_HEADER_HOSTNAME))
@@ -393,13 +399,13 @@ static void setup_http_client_execute_request_hostname_header_mocks(bool add_con
 
 static void setup_http_client_process_item_mocks(bool add_content)
 {
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
     STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1).CallCannotFail();
     STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, IGNORED_ARG));
-    STRICT_EXPECTED_CALL(xio_client_send(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_send(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     if (add_content)
     {
-        STRICT_EXPECTED_CALL(xio_client_send(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+        STRICT_EXPECTED_CALL(patchcord_client_send(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     }
     STRICT_EXPECTED_CALL(free(IGNORED_ARG));
     STRICT_EXPECTED_CALL(item_list_remove_item(IGNORED_ARG, IGNORED_ARG));
@@ -472,7 +478,7 @@ CTEST_FUNCTION(http_client_destroy_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_destroy(IGNORED_ARG));
     STRICT_EXPECTED_CALL(http_codec_destroy(IGNORED_ARG));
     STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_ARG));
     STRICT_EXPECTED_CALL(item_list_destroy(IGNORED_ARG));
@@ -526,9 +532,9 @@ CTEST_FUNCTION(http_client_open_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_codec_get_recv_function());
-    STRICT_EXPECTED_CALL(xio_socket_get_interface());
-    STRICT_EXPECTED_CALL(xio_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
-    STRICT_EXPECTED_CALL(xio_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_cord_get_interface());
+    STRICT_EXPECTED_CALL(patchcord_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
@@ -572,9 +578,9 @@ CTEST_FUNCTION(http_client_open_fail)
     CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     STRICT_EXPECTED_CALL(http_codec_get_recv_function()).CallCannotFail();
-    STRICT_EXPECTED_CALL(xio_socket_get_interface()).CallCannotFail();
-    STRICT_EXPECTED_CALL(xio_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
-    STRICT_EXPECTED_CALL(xio_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(xio_cord_get_interface()).CallCannotFail();
+    STRICT_EXPECTED_CALL(patchcord_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     umock_c_negative_tests_snapshot();
 
     // act
@@ -640,7 +646,7 @@ CTEST_FUNCTION(http_client_close_state_open_succeed)
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_close(handle, test_on_close_complete, NULL);
@@ -660,7 +666,7 @@ CTEST_FUNCTION(http_client_close_state_opening_succeed)
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
     // act
     int result = http_client_close(handle, test_on_close_complete, NULL);
@@ -714,7 +720,7 @@ CTEST_FUNCTION(http_client_close_on_error_succeed)
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
-    STRICT_EXPECTED_CALL(xio_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG)).SetReturn(__LINE__);
+    STRICT_EXPECTED_CALL(patchcord_client_close(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG)).SetReturn(__LINE__);
     http_client_close(handle, test_on_close_complete, NULL);
     umock_c_reset_all_calls();
 
@@ -925,7 +931,7 @@ CTEST_FUNCTION(http_client_process_item_opening_succeed)
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
 
     // act
     http_client_process_item(handle);
@@ -957,9 +963,10 @@ CTEST_FUNCTION(http_client_process_item_no_items_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
+    http_client_process_item(handle);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
     STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG));
 
     // act
@@ -1016,6 +1023,7 @@ CTEST_FUNCTION(http_client_process_item_open_post_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
+    http_client_process_item(handle);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, TEST_SEND_CONTENT, TEST_CONTENT_LENGTH, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
 
@@ -1038,6 +1046,7 @@ CTEST_FUNCTION(http_client_process_item_open_get_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
+    http_client_process_item(handle);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_GET, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
 
@@ -1060,6 +1069,7 @@ CTEST_FUNCTION(http_client_process_item_open_option_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
+    http_client_process_item(handle);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_OPTIONS, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
 
@@ -1082,6 +1092,7 @@ CTEST_FUNCTION(http_client_process_item_open_put_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
+    http_client_process_item(handle);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_PUT, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
 
@@ -1104,15 +1115,16 @@ CTEST_FUNCTION(http_client_process_item_open_get_item_fail_succeed)
     HTTP_CLIENT_HANDLE handle = http_client_create();
     (void)http_client_open(handle, &TEST_HTTP_ADDRESS, test_on_open_complete, NULL, test_on_error, NULL);
     g_on_open_complete(g_open_user_ctx, IO_OPEN_OK);
+    http_client_process_item(handle);
     int result = http_client_execute_request(handle, HTTP_CLIENT_REQUEST_POST, TEST_RELATIVE_PATH, TEST_HTTP_HEADER, NULL, 0, test_on_request_callback, NULL);
     umock_c_reset_all_calls();
 
-    STRICT_EXPECTED_CALL(xio_client_process_item(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
+    //STRICT_EXPECTED_CALL(test_on_open_complete(IGNORED_ARG, HTTP_CLIENT_OK));
     STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1);
     STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, IGNORED_ARG)).SetReturn(NULL);
 
     // act
-    http_client_process_item(handle);
     http_client_process_item(handle);
 
     // assert
@@ -1128,6 +1140,8 @@ CTEST_FUNCTION(http_client_process_item_not_connected_succeed)
     // arrange
     HTTP_CLIENT_HANDLE handle = http_client_create();
     umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
 
     // act
     http_client_process_item(handle);

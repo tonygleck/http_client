@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "lib-util-c/thread_mgr.h"
+
 #include "http_client/http_client.h"
 
 typedef struct SAMPLE_DATA_TAG
@@ -28,7 +30,7 @@ void on_open_complete(void* context, HTTP_CLIENT_RESULT open_result)
     else
     {
         sample->socket_open = 1;
-        printf("Open complete called");
+        printf("Open complete called\n");
     }
 }
 
@@ -41,7 +43,7 @@ static void on_close_complete(void* context)
 void on_request_callback(void* callback_ctx, HTTP_CLIENT_RESULT request_result, const unsigned char* content, size_t content_length, unsigned int status_code, HTTP_HEADERS_HANDLE response_headers)
 {
     SAMPLE_DATA* sample = (SAMPLE_DATA*)callback_ctx;
-    sample->socket_closed = 1;
+    sample->send_complete = 2;
 }
 
 void on_error(void* context, HTTP_CLIENT_RESULT error_result)
@@ -52,7 +54,7 @@ void on_error(void* context, HTTP_CLIENT_RESULT error_result)
 int main()
 {
     SAMPLE_DATA data = {0};
-    HTTP_CLIENT_HANDLE http_client;
+    HTTP_CLIENT_HANDLE http_client = NULL;
 
     HTTP_ADDRESS http_address = {0};
     http_address.hostname = "httpbin.org";
@@ -60,14 +62,16 @@ int main()
 
     if ((http_client = http_client_create()) == NULL)
     {
-        printf("Failure creating http client");
+        printf("Failure creating http client\n");
     }
     else if (http_client_open(http_client, &http_address, on_open_complete, &data, on_error, NULL) != 0)
     {
-        printf("Failure creating http client");
+        printf("Failure creating http client\n");
     }
     else
     {
+        http_client_set_trace(http_client, true);
+
         do
         {
             http_client_process_item(http_client);
@@ -76,24 +80,27 @@ int main()
             {
                 if (data.send_complete == 0)
                 {
-                    HTTP_HEADERS_HANDLE http_header;
+                    HTTP_HEADERS_HANDLE http_header = NULL;
 
-                    // Send socket
-
-                    if (http_client_execute_request(http_client, HTTP_CLIENT_REQUEST_GET, "/", http_header, NULL, 0, on_request_callback, &data) != 0)
+                    // Send http request
+                    if (http_client_execute_request(http_client, HTTP_CLIENT_REQUEST_GET, "/get", http_header, NULL, 0, on_request_callback, &data) != 0)
                     {
                         printf("Failure sending data to socket\n");
                     }
+
+                    data.send_complete = 1;
                 }
-                else if (data.send_complete >= 2)
+                else if (data.send_complete == 2)
                 {
                     http_client_close(http_client, on_close_complete, &data);
+                    data.send_complete = 3;
                 }
             }
             if (data.socket_closed > 0)
             {
                 break;
             }
+            thread_mgr_sleep(5);
         } while (data.keep_running == 0);
         http_client_destroy(http_client);
     }
