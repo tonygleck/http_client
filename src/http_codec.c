@@ -10,7 +10,7 @@
 #include "lib-util-c/crt_extensions.h"
 #include "lib-util-c/buffer_alloc.h"
 
-#include "patchcords/xio_client.h"
+#include "patchcords/patchcord_client.h"
 
 #include "http_client/http_headers.h"
 #include "http_client/http_codec.h"
@@ -553,7 +553,7 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
 
                 if (codec_info->trace_on)
                 {
-                    log_trace("\r\nHTTP Status: %d\r\n", codec_info->recv_data.status_code);
+                    log_trace("\r\n<== HTTP Status: %d\r\n", codec_info->recv_data.status_code);
 
                     size_t header_count = http_header_get_count(codec_info->recv_data.recv_header);
                     for (size_t index = 0; index < header_count; index++)
@@ -562,11 +562,11 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
                         const char* value;
                         if (http_header_get_name_value_pair(codec_info->recv_data.recv_header, index, &name, &value) == 0)
                         {
-                            log_trace("\r\n%s: %s\r\n", name, value);
+                            log_trace("\r\n<== %s: %s\r\n", name, value);
                         }
 
                         // Trace body
-                        log_trace("\r\n%.*s\r\n", (int)codec_info->recv_data.content_info.payload_size, codec_info->recv_data.content_info.payload);
+                        log_trace("\r\n<== %.*s\r\n", (int)codec_info->recv_data.content_info.payload_size, codec_info->recv_data.content_info.payload);
                     }
                 }
 

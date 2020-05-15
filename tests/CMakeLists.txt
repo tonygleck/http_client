@@ -2,6 +2,7 @@
 
 cmake_minimum_required(VERSION 3.2)
 
+add_unittest_directory(http_client_e2e)
 add_unittest_directory(http_client_ut)
 add_unittest_directory(http_codec_ut)
 add_unittest_directory(http_headers_ut)
