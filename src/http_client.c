@@ -11,8 +11,8 @@
 #include "lib-util-c/crt_extensions.h"
 #include "lib-util-c/buffer_alloc.h"
 
-#include "patchcords/xio_client.h"
-#include "patchcords/xio_socket.h"
+#include "patchcords/patchcord_client.h"
+#include "patchcords/cord_socket.h"
 
 #include "http_client/http_client.h"
 #include "http_client/http_headers.h"
@@ -27,14 +27,16 @@ typedef enum HTTP_CLIENT_STATE_TAG
 {
     CLIENT_STATE_NOT_CONN,
     CLIENT_STATE_OPENING,
+    CLIENT_STATE_OPENED,
     CLIENT_STATE_OPEN,
     CLIENT_STATE_CLOSING,
+    CLIENT_STATE_CLOSED,
     CLIENT_STATE_ERROR
 } HTTP_CLIENT_STATE;
 
 typedef struct HTTP_CLIENT_INFO_TAG
 {
-    XIO_INSTANCE_HANDLE xio_handle;
+    PATCH_INSTANCE_HANDLE xio_handle;
     HTTP_CODEC_HANDLE codec_handle;
 
     HTTP_HEADERS_HANDLE headers;
@@ -53,6 +55,8 @@ typedef struct HTTP_CLIENT_INFO_TAG
 
 //    HTTP_RECV_DATA recv_data;
     bool logging_enabled;
+    uint16_t port;
+
 } HTTP_CLIENT_INFO;
 
 typedef struct HTTP_REQUEST_INFO_TAG
@@ -113,7 +117,7 @@ static int construct_header_line(HTTP_REQUEST_INFO* request_info, HTTP_HEADERS_H
     if (result == 0)
     {
         // Add content length
-        if (string_buffer_construct_sprintf(&request_info->header_line, "%s: %u%s", HTTP_CONTENT_LEN, (unsigned int)content_len, HTTP_CRLF_VALUE) != 0)
+        if (string_buffer_construct_sprintf(&request_info->header_line, "%s: %u%s%s", HTTP_CONTENT_LEN, (unsigned int)content_len, HTTP_CRLF_VALUE, HTTP_CRLF_VALUE) != 0)
         {
             free(request_info->header_line.payload);
             log_error("Failure allocating host line");
@@ -130,7 +134,7 @@ static void on_open_complete(void* context, IO_OPEN_RESULT open_result)
         HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
         if (open_result == IO_OPEN_OK)
         {
-            client_info->state = CLIENT_STATE_OPEN;
+            client_info->state = CLIENT_STATE_OPENED;
         }
         else
         {
@@ -146,7 +150,11 @@ static void on_close_complete(void* context)
     if (context != NULL)
     {
         HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
-        client_info->state = CLIENT_STATE_NOT_CONN;
+        client_info->state = CLIENT_STATE_CLOSED;
+    }
+    else
+    {
+        log_error("Failure context NULL on closed complete");
     }
 }
 
@@ -173,21 +181,28 @@ static void on_error(void* context, IO_ERROR_RESULT error_result)
             client_info->on_error_cb(client_info->err_user_ctx, http_error);
         }
     }
+    else
+    {
+        log_error("Failure context NULL on on_error");
+    }
 }
 
 static void on_send_complete(void* context, IO_SEND_RESULT send_result)
 {
     if (context != NULL)
     {
-        if (send_result == IO_SEND_OK)
+        // Only report failures
+        if (send_result != IO_SEND_OK)
         {
-            //HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
-            //if (client_info->)
+            HTTP_CLIENT_INFO* client_info = (HTTP_CLIENT_INFO*)context;
+            client_info->state = CLIENT_STATE_ERROR;
+            client_info->curr_result = HTTP_CLIENT_SEND_FAILED;
+            log_error("Failure sending request");
         }
-        else
-        {
-        }
-
+    }
+    else
+    {
+        log_error("Failure context NULL on send complete");
     }
 }
 
@@ -223,7 +238,7 @@ static int construct_http_data(const HTTP_REQUEST_INFO* request_info, STRING_BUF
     }
     if (result == 0)
     {
-        if (string_buffer_construct_sprintf(http_req_line, HTTP_REQUEST_LINE_FMT, method, request_info->relative_path, request_info->header_line) != 0)
+        if (string_buffer_construct_sprintf(http_req_line, HTTP_REQUEST_LINE_FMT, method, request_info->relative_path, request_info->header_line.payload) != 0)
         {
             log_error("Failure constructing request line");
             result = __LINE__;
@@ -239,7 +254,13 @@ static int construct_http_data(const HTTP_REQUEST_INFO* request_info, STRING_BUF
 static int write_http_text(HTTP_CLIENT_INFO* client_info, const char* text)
 {
     int result;
-    if (xio_client_send(client_info->xio_handle, text, strlen(text), on_send_complete, client_info) != 0)
+
+    if (text == NULL)
+    {
+        log_error("Text is NULL");
+    }
+
+    if (patchcord_client_send(client_info->xio_handle, text, strlen(text), on_send_complete, client_info) != 0)
     {
         log_error("Failure sending client data");
         result = __LINE__;
@@ -248,7 +269,7 @@ static int write_http_text(HTTP_CLIENT_INFO* client_info, const char* text)
     {
         if (client_info->logging_enabled)
         {
-            log_trace("%s", text);
+            log_trace("==> %s", text);
         }
         result = 0;
     }
@@ -274,13 +295,18 @@ static int send_http_request(HTTP_CLIENT_INFO* client_info, const HTTP_REQUEST_I
             result = __LINE__;
         }
         // Send the Data
-        else if (request_info->payload.payload_size > 0 && xio_client_send(client_info->xio_handle, request_info->payload.payload, request_info->payload.payload_size, on_send_complete, client_info) != 0)
+        else if (request_info->payload.payload_size > 0 && patchcord_client_send(client_info->xio_handle, request_info->payload.payload, request_info->payload.payload_size, on_send_complete, client_info) != 0)
         {
             log_error("Failure sending client data");
             result = __LINE__;
         }
         else
         {
+            // write trace line
+            if (client_info->logging_enabled && request_info->payload.payload_size > 0)
+            {
+                log_trace("==> %s", request_info->payload.payload);
+            }
             result = 0;
         }
         free(request_line.payload);
@@ -340,18 +366,18 @@ static int create_connection(HTTP_CLIENT_INFO* client_info, const HTTP_ADDRESS* 
     config.port = http_address->port;
     config.address_type = ADDRESS_TYPE_IP;
 
-    XIO_CLIENT_CALLBACK_INFO callback_info;
+    PATCHCORD_CALLBACK_INFO callback_info;
     callback_info.on_bytes_received = http_codec_get_recv_function();
     callback_info.on_bytes_received_ctx = client_info->codec_handle;
     callback_info.on_io_error = on_error;
     callback_info.on_io_error_ctx = client_info;
 
-    if ((client_info->xio_handle = xio_client_create(xio_socket_get_interface(), &config, &callback_info)) == NULL)
+    if ((client_info->xio_handle = patchcord_client_create(xio_cord_get_interface(), &config, &callback_info)) == NULL)
     {
         log_error("Failure creating client connection");
         result = __LINE__;
     }
-    else if (xio_client_open(client_info->xio_handle, on_open_complete, client_info) != 0)
+    else if (patchcord_client_open(client_info->xio_handle, on_open_complete, client_info) != 0)
     {
         log_error("Failure opening http client");
         result = __LINE__;
@@ -404,7 +430,7 @@ void http_client_destroy(HTTP_CLIENT_HANDLE handle)
 {
     if (handle != NULL)
     {
-        xio_client_destroy(handle->xio_handle);
+        patchcord_client_destroy(handle->xio_handle);
         http_codec_destroy(handle->codec_handle);
         item_list_destroy(handle->recv_callback_list);
         item_list_destroy(handle->request_list);
@@ -432,6 +458,7 @@ int http_client_open(HTTP_CLIENT_HANDLE handle, const HTTP_ADDRESS* http_address
     }
     else
     {
+        handle->port = http_address->port;
         handle->on_open_complete_cb = on_open_complete_cb;
         handle->open_complete_ctx = open_user_ctx;
         handle->on_error_cb = on_error_cb;
@@ -450,7 +477,7 @@ int http_client_close(HTTP_CLIENT_HANDLE handle, ON_HTTP_CLIENT_CLOSE on_close_c
         log_error("Invalid paramenter handle is NULL");
         result = __LINE__;
     }
-    else if (handle->state != CLIENT_STATE_OPEN && handle->state != CLIENT_STATE_OPENING && handle->state != CLIENT_STATE_ERROR)
+    else if (handle->state == CLIENT_STATE_NOT_CONN)
     {
         log_error("Close attempt on a client that is not open");
         result = __LINE__;
@@ -459,9 +486,9 @@ int http_client_close(HTTP_CLIENT_HANDLE handle, ON_HTTP_CLIENT_CLOSE on_close_c
     {
         handle->on_close_cb = on_close_cb;
         handle->close_user_ctx = user_ctx;
-        if (handle->state == CLIENT_STATE_OPEN || handle->state == CLIENT_STATE_OPENING)
+        if (handle->state == CLIENT_STATE_OPEN || handle->state == CLIENT_STATE_OPENING || handle->state == CLIENT_STATE_OPENED)
         {
-            if (xio_client_close(handle->xio_handle, on_close_complete, handle) != 0)
+            if (patchcord_client_close(handle->xio_handle, on_close_complete, handle) != 0)
             {
                 log_error("Failure on close attempt");
                 handle->curr_result = HTTP_CLIENT_ERROR;
@@ -505,56 +532,82 @@ int http_client_execute_request(HTTP_CLIENT_HANDLE handle, HTTP_CLIENT_REQUEST_T
         {
             memset(execute_req, 0, sizeof(HTTP_REQUEST_INFO));
             uint16_t port;
+            bool create_header = false;
             execute_req->request_type = request_type;
             execute_req->client_info = handle;
 
-            resp_info.on_request_cb = on_request_callback;
-            resp_info.on_request_ctx = callback_ctx;
-            if (clone_string(&execute_req->relative_path, relative_path) != 0)
+            if (http_header == NULL)
             {
-                log_error("Failure allocating request");
-                free(execute_req);
-                result = __LINE__;
+                if ((http_header = http_header_create()) == NULL)
+                {
+                    log_error("Failure allocating request");
+                    result = __LINE__;
+                }
+                else
+                {
+                    result = 0;
+                    create_header = true;
+                }
             }
-            else if (content_length != 0 && byte_buffer_construct(&execute_req->payload, content, content_length) != 0)
-            {
-                log_error("Failure allocating request");
-                free(execute_req->relative_path);
-                free(execute_req);
-                result = __LINE__;
-            }
-            else if (construct_header_line(execute_req, http_header, content_length, xio_client_query_endpoint(handle->xio_handle, &port), port) != 0)
-            {
-                log_error("Failure allocating header line");
-                free(execute_req->payload.payload);
-                free(execute_req->relative_path);
-                free(execute_req);
-                result = __LINE__;
-            }
-            else if (item_list_add_copy(handle->recv_callback_list, &resp_info, sizeof(HTTP_RESP_INFO) ) != 0)
-            {
-                log_error("Failure adding to response list");
-                free(execute_req->payload.payload);
-                free(execute_req->header_line.payload);
-                free(execute_req->relative_path);
-                free(execute_req);
-                result = __LINE__;
-            }
-            else if (item_list_add_item(handle->request_list, execute_req) != 0)
-            {
-                log_error("Failure adding to request list");
-                free(execute_req->payload.payload);
-                free(execute_req->header_line.payload);
-                free(execute_req->relative_path);
-                size_t remove_index = item_list_item_count(handle->recv_callback_list);
-                (void)item_list_remove_item(handle->recv_callback_list, remove_index);
-                free(execute_req);
-                result = __LINE__;
-            }
-
             else
             {
                 result = 0;
+            }
+
+            if (result == 0)
+            {
+                resp_info.on_request_cb = on_request_callback;
+                resp_info.on_request_ctx = callback_ctx;
+                if (clone_string(&execute_req->relative_path, relative_path) != 0)
+                {
+                    log_error("Failure allocating request");
+                    free(execute_req);
+                    result = __LINE__;
+                }
+                else if (content_length != 0 && byte_buffer_construct(&execute_req->payload, content, content_length) != 0)
+                {
+                    log_error("Failure allocating request");
+                    free(execute_req->relative_path);
+                    free(execute_req);
+                    result = __LINE__;
+                }
+                else if (construct_header_line(execute_req, http_header, content_length, patchcord_client_query_endpoint(handle->xio_handle, &port), handle->port) != 0)
+                {
+                    log_error("Failure allocating header line");
+                    free(execute_req->payload.payload);
+                    free(execute_req->relative_path);
+                    free(execute_req);
+                    result = __LINE__;
+                }
+                else if (item_list_add_copy(handle->recv_callback_list, &resp_info, sizeof(HTTP_RESP_INFO) ) != 0)
+                {
+                    log_error("Failure adding to response list");
+                    free(execute_req->payload.payload);
+                    free(execute_req->header_line.payload);
+                    free(execute_req->relative_path);
+                    free(execute_req);
+                    result = __LINE__;
+                }
+                else if (item_list_add_item(handle->request_list, execute_req) != 0)
+                {
+                    log_error("Failure adding to request list");
+                    free(execute_req->payload.payload);
+                    free(execute_req->header_line.payload);
+                    free(execute_req->relative_path);
+                    size_t remove_index = item_list_item_count(handle->recv_callback_list);
+                    (void)item_list_remove_item(handle->recv_callback_list, remove_index);
+                    free(execute_req);
+                    result = __LINE__;
+                }
+                else
+                {
+                    result = 0;
+                }
+            }
+
+            if (create_header)
+            {
+                http_header_destroy(http_header);
             }
         }
     }
@@ -569,55 +622,67 @@ void http_client_process_item(HTTP_CLIENT_HANDLE handle)
     }
     else
     {
+        patchcord_client_process_item(handle->xio_handle);
         switch (handle->state)
         {
             case CLIENT_STATE_OPENING:
-            case CLIENT_STATE_OPEN:
             case CLIENT_STATE_CLOSING:
-                xio_client_process_item(handle->xio_handle);
-
-                if (handle->state == CLIENT_STATE_OPEN)
+                break;
+            case CLIENT_STATE_OPENED:
+                if (handle->on_open_complete_cb != NULL)
                 {
-                    const HTTP_REQUEST_INFO* execute_req;
-                    size_t item_count = item_list_item_count(handle->request_list);
-                    for (size_t index = 0; index < item_count; index++)
+                    handle->on_open_complete_cb(handle->open_complete_ctx, HTTP_CLIENT_OK);
+                }
+                handle->state = CLIENT_STATE_OPEN;
+                break;
+            case CLIENT_STATE_OPEN:
+            {
+                const HTTP_REQUEST_INFO* execute_req;
+                size_t item_count = item_list_item_count(handle->request_list);
+                for (size_t index = 0; index < item_count; index++)
+                {
+                    if ((execute_req = (const HTTP_REQUEST_INFO*)item_list_get_item(handle->request_list, index)) == NULL)
                     {
-                        if ((execute_req = (const HTTP_REQUEST_INFO*)item_list_get_item(handle->request_list, index)) == NULL)
+                        handle->state = CLIENT_STATE_ERROR;
+                        handle->curr_result = HTTP_CLIENT_MEMORY;
+                        log_error("Invalid item in the list");
+                    }
+                    else
+                    {
+                        // Send the item
+                        if (send_http_request(handle, execute_req) != 0)
                         {
                             handle->state = CLIENT_STATE_ERROR;
                             handle->curr_result = HTTP_CLIENT_MEMORY;
-                            log_error("Invalid item in the list");
+                            log_error("Failure sending http request");
+                            break;
                         }
-                        else
+                        else if (item_list_remove_item(handle->request_list, index) != 0)
                         {
-                            // Send the item
-                            if (send_http_request(handle, execute_req) != 0)
-                            {
-                                handle->state = CLIENT_STATE_ERROR;
-                                handle->curr_result = HTTP_CLIENT_MEMORY;
-                                log_error("Failure sending http request");
-                                break;
-                            }
-                            else if (item_list_remove_item(handle->request_list, index) != 0)
-                            {
-                                handle->state = CLIENT_STATE_ERROR;
-                                handle->curr_result = HTTP_CLIENT_MEMORY;
-                                log_error("Invalid paramenter handle is NULL");
-                            }
+                            handle->state = CLIENT_STATE_ERROR;
+                            handle->curr_result = HTTP_CLIENT_MEMORY;
+                            log_error("Invalid paramenter handle is NULL");
                         }
                     }
                 }
                 break;
-            default:
+            }
+            case CLIENT_STATE_CLOSED:
+                if (handle->on_close_cb != NULL)
+                {
+                    handle->on_close_cb(handle->close_user_ctx);
+                }
+                handle->state = CLIENT_STATE_NOT_CONN;
+                break;
             case CLIENT_STATE_NOT_CONN:
+            default:
                 break;
             case CLIENT_STATE_ERROR:
-                // If not open then close
-                //if ()
                 if (handle->on_error_cb)
                 {
                     handle->on_error_cb(handle->err_user_ctx, handle->curr_result);
                 }
+                handle->state = CLIENT_STATE_NOT_CONN;
                 break;
         }
     }

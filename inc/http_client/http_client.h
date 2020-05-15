@@ -15,7 +15,7 @@ extern "C" {
 
 #include "azure_macro_utils/macro_utils.h"
 #include "umock_c/umock_c_prod.h"
-#include "patchcords/xio_client.h"
+#include "patchcords/patchcord_client.h"
 #include "http_client/http_headers.h"
 
 typedef enum HTTP_CLIENT_RESULT_TAG
