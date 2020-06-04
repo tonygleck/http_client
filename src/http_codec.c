@@ -562,12 +562,11 @@ static void on_http_bytes_recv(void* context, const unsigned char* buffer, size_
                         const char* value;
                         if (http_header_get_name_value_pair(codec_info->recv_data.recv_header, index, &name, &value) == 0)
                         {
-                            log_trace("\r\n<== %s: %s\r\n", name, value);
+                            log_trace("<== %s: %s\r\n", name, value);
                         }
-
-                        // Trace body
-                        log_trace("\r\n<== %.*s\r\n", (int)codec_info->recv_data.content_info.payload_size, codec_info->recv_data.content_info.payload);
                     }
+                    // Trace body
+                    log_trace("<== %.*s\r\n", (int)codec_info->recv_data.content_info.payload_size, codec_info->recv_data.content_info.payload);
                 }
 
                 http_recv_data.recv_header = codec_info->recv_data.recv_header;
