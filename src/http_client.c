@@ -12,7 +12,7 @@
 #include "lib-util-c/buffer_alloc.h"
 
 #include "patchcords/patchcord_client.h"
-#include "patchcords/cord_socket.h"
+#include "patchcords/cord_socket_client.h"
 
 #include "http_client/http_client.h"
 #include "http_client/http_headers.h"
@@ -372,7 +372,7 @@ static int create_connection(HTTP_CLIENT_INFO* client_info, const HTTP_ADDRESS* 
     callback_info.on_io_error = on_error;
     callback_info.on_io_error_ctx = client_info;
 
-    if ((client_info->xio_handle = patchcord_client_create(xio_cord_get_interface(), &config, &callback_info)) == NULL)
+    if ((client_info->xio_handle = patchcord_client_create(cord_socket_get_interface(), &config, &callback_info)) == NULL)
     {
         log_error("Failure creating client connection");
         result = __LINE__;
