@@ -257,7 +257,7 @@ static int write_http_text(HTTP_CLIENT_INFO* client_info, const char* text)
 
     if (text == NULL)
     {
-        log_error("Text is NULL");
+        log_warning("writing Text is NULL");
     }
 
     if (patchcord_client_send(client_info->xio_handle, text, strlen(text), on_send_complete, client_info) != 0)
@@ -653,14 +653,14 @@ void http_client_process_item(HTTP_CLIENT_HANDLE handle)
                         if (send_http_request(handle, execute_req) != 0)
                         {
                             handle->state = CLIENT_STATE_ERROR;
-                            handle->curr_result = HTTP_CLIENT_MEMORY;
+                            handle->curr_result = HTTP_CLIENT_SEND_FAILED;
                             log_error("Failure sending http request");
                             break;
                         }
                         else if (item_list_remove_item(handle->request_list, index) != 0)
                         {
                             handle->state = CLIENT_STATE_ERROR;
-                            handle->curr_result = HTTP_CLIENT_MEMORY;
+                            handle->curr_result = HTTP_CLIENT_ERROR;
                             log_error("Invalid paramenter handle is NULL");
                         }
                     }
