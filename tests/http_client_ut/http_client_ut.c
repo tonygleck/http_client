@@ -36,7 +36,7 @@ static void my_mem_shim_free(void* ptr)
 #include "http_client/http_headers.h"
 #include "http_client/http_codec.h"
 #include "patchcords/patchcord_client.h"
-#include "patchcords/cord_socket.h"
+#include "patchcords/cord_socket_client.h"
 #undef ENABLE_MOCKS
 
 #include "http_client/http_client.h"
@@ -532,7 +532,7 @@ CTEST_FUNCTION(http_client_open_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(http_codec_get_recv_function());
-    STRICT_EXPECTED_CALL(xio_cord_get_interface());
+    STRICT_EXPECTED_CALL(cord_socket_get_interface());
     STRICT_EXPECTED_CALL(patchcord_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     STRICT_EXPECTED_CALL(patchcord_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
 
@@ -578,7 +578,7 @@ CTEST_FUNCTION(http_client_open_fail)
     CTEST_ASSERT_ARE_EQUAL(int, 0, negativeTestsInitResult);
 
     STRICT_EXPECTED_CALL(http_codec_get_recv_function()).CallCannotFail();
-    STRICT_EXPECTED_CALL(xio_cord_get_interface()).CallCannotFail();
+    STRICT_EXPECTED_CALL(cord_socket_get_interface()).CallCannotFail();
     STRICT_EXPECTED_CALL(patchcord_client_create(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     STRICT_EXPECTED_CALL(patchcord_client_open(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     umock_c_negative_tests_snapshot();
