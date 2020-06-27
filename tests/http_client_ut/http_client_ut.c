@@ -162,11 +162,6 @@ extern "C" {
         return 0;
     }
 
-    static const void* my_item_list_get_front(ITEM_LIST_HANDLE handle)
-    {
-        return g_add_copy_item;
-    }
-
     static int my_item_list_add_copy(ITEM_LIST_HANDLE handle, const void* item, size_t item_size)
     {
         g_do_not_delete_items = handle;
@@ -194,6 +189,12 @@ extern "C" {
     }
 
     static const void* my_item_list_get_item(ITEM_LIST_HANDLE handle, size_t item_index)
+    {
+        (void)handle;
+        return g_list_added_item;
+    }
+
+    static const void* my_item_list_get_front(ITEM_LIST_HANDLE handle)
     {
         (void)handle;
         return g_list_added_item;
@@ -400,8 +401,7 @@ static void setup_http_client_execute_request_hostname_header_mocks(bool add_con
 static void setup_http_client_process_item_mocks(bool add_content)
 {
     STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1).CallCannotFail();
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_ARG));
     STRICT_EXPECTED_CALL(patchcord_client_send(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
     if (add_content)
     {
@@ -413,6 +413,7 @@ static void setup_http_client_process_item_mocks(bool add_content)
     STRICT_EXPECTED_CALL(free(IGNORED_ARG));
     STRICT_EXPECTED_CALL(free(IGNORED_ARG));
     STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_ARG));
 }
 
 CTEST_FUNCTION(http_client_create_succeed)
@@ -967,7 +968,7 @@ CTEST_FUNCTION(http_client_process_item_no_items_succeed)
     umock_c_reset_all_calls();
 
     STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_ARG));
 
     // act
     http_client_process_item(handle);
@@ -1121,8 +1122,7 @@ CTEST_FUNCTION(http_client_process_item_open_get_item_fail_succeed)
 
     STRICT_EXPECTED_CALL(patchcord_client_process_item(IGNORED_ARG));
     //STRICT_EXPECTED_CALL(test_on_open_complete(IGNORED_ARG, HTTP_CLIENT_OK));
-    STRICT_EXPECTED_CALL(item_list_item_count(IGNORED_ARG)).SetReturn(1);
-    STRICT_EXPECTED_CALL(item_list_get_item(IGNORED_ARG, IGNORED_ARG)).SetReturn(NULL);
+    STRICT_EXPECTED_CALL(item_list_get_front(IGNORED_ARG)).SetReturn(NULL);
 
     // act
     http_client_process_item(handle);

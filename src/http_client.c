@@ -638,31 +638,21 @@ void http_client_process_item(HTTP_CLIENT_HANDLE handle)
             case CLIENT_STATE_OPEN:
             {
                 const HTTP_REQUEST_INFO* execute_req;
-                size_t item_count = item_list_item_count(handle->request_list);
-                for (size_t index = 0; index < item_count; index++)
+                while ((execute_req = item_list_get_front(handle->request_list)) != NULL)
                 {
-                    if ((execute_req = (const HTTP_REQUEST_INFO*)item_list_get_item(handle->request_list, index)) == NULL)
+                    // Send the item
+                    if (send_http_request(handle, execute_req) != 0)
                     {
                         handle->state = CLIENT_STATE_ERROR;
-                        handle->curr_result = HTTP_CLIENT_MEMORY;
-                        log_error("Invalid item in the list");
+                        handle->curr_result = HTTP_CLIENT_SEND_FAILED;
+                        log_error("Failure sending http request");
+                        break;
                     }
-                    else
+                    else if (item_list_remove_item(handle->request_list, 0) != 0)
                     {
-                        // Send the item
-                        if (send_http_request(handle, execute_req) != 0)
-                        {
-                            handle->state = CLIENT_STATE_ERROR;
-                            handle->curr_result = HTTP_CLIENT_SEND_FAILED;
-                            log_error("Failure sending http request");
-                            break;
-                        }
-                        else if (item_list_remove_item(handle->request_list, index) != 0)
-                        {
-                            handle->state = CLIENT_STATE_ERROR;
-                            handle->curr_result = HTTP_CLIENT_ERROR;
-                            log_error("Invalid paramenter handle is NULL");
-                        }
+                        handle->state = CLIENT_STATE_ERROR;
+                        handle->curr_result = HTTP_CLIENT_ERROR;
+                        log_error("Invalid paramenter handle is NULL");
                     }
                 }
                 break;
