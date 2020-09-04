@@ -171,7 +171,7 @@ static void on_error(void* context, IO_ERROR_RESULT error_result)
                 case IO_ERROR_MEMORY:
                     http_error = HTTP_CLIENT_MEMORY;
                     break;
-                case IO_ERROR_SERVER_DISCONN:
+                case IO_ERROR_ENDPOINT_DISCONN:
                     http_error = HTTP_CLIENT_DISCONNECTION;
                     break;
                 default:
