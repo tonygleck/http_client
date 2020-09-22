@@ -127,14 +127,17 @@ static int convert_char_to_hex(const unsigned char* hexText, size_t len)
         else
         {
             int accumulator = 0;
+            // Check if this is a number
             if (hexText[index] >= 48 && hexText[index] <= 57)
             {
                 accumulator = hexText[index] - 48;
             }
+            // These are for capital A - F
             else if (hexText[index] >= 65 && hexText[index] <= 70)
             {
                 accumulator = hexText[index] - 55;
             }
+            // These are lower a - f
             else if (hexText[index] >= 97 && hexText[index] <= 102)
             {
                 accumulator = hexText[index] - 87;
