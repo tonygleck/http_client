@@ -106,9 +106,24 @@ static const char* TEST_HTTP_CHUNK_EXAMPLE_IRL[] =
     "1234567890123456\r",
     "\n100\r\n1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\r\n0\r\n\r\n"
 };
+static const char* TEST_HTTP_CHUNK_EXAMPLE_IRL_4[] =
+{
+    "H",
+    "TTP/1.1 200 OK",
+    "\r\nDate: Thu, 11 May 2017 21:52:38 GMT\r\nContent-Typ",
+    "e: application/json; charset=utf-8\r\nTransfer-Encoding: chunked\r\n",
+    "\r\n",
+    "A",
+    "5\r\n",
+    "{\"enrollmentGroupId\":\"RIoT_Device\",\"attestation\":{\"x509\":{}},\"etag\":\"\\\"14009e7f-0000-0000-0000-5914dd230000\\\"\",\"generationId\":\"9d546a85-5e8a-44c3-8946-c8ce4f54e5b6\"}\r\n",
+    "0\r\n\r\n"
+};
+static const char* TEST_HTTP_CHUNK_EXAMPLE_IRL_4_BODY = "{\"enrollmentGroupId\":\"RIoT_Device\",\"attestation\":{\"x509\":{}},\"etag\":\"\\\"14009e7f-0000-0000-0000-5914dd230000\\\"\",\"generationId\":\"9d546a85-5e8a-44c3-8946-c8ce4f54e5b6\"}";
 #define CHUNK_IRL_LENGTH_1      26
 #define CHUNK_IRL_LENGTH_2      16
 #define CHUNK_IRL_LENGTH_3      256
+#define CHUNK_IRL_LENGTH_4      16
+
 
 /*static const char* TEST_HTTP_CHUNK_EXAMPLE_IRL_2[] =
 {
@@ -669,6 +684,51 @@ CTEST_FUNCTION(on_http_bytes_recv_chunked_IRL_content_succeed)
     for (size_t index = 0; index < count; index++)
     {
         const char* test_value = TEST_HTTP_CHUNK_EXAMPLE_IRL_2[index];
+        size_t test_len = strlen(test_value);
+        on_bytes_recv(handle, (const unsigned char*)test_value, test_len);
+    }
+
+    // assert
+    CTEST_ASSERT_ARE_EQUAL(char_ptr, umock_c_get_expected_calls(), umock_c_get_actual_calls());
+
+    // cleanup
+    http_codec_destroy(handle);
+}
+
+CTEST_FUNCTION(on_http_bytes_recv_chunked_IRL_4_content_succeed)
+{
+    // arrange
+    HTTP_CODEC_VALIDATE validate = {TEST_HTTP_CHUNK_EXAMPLE_IRL_4_BODY, 200};
+    HTTP_CODEC_HANDLE handle = http_codec_create(test_on_data_recv_callback, &validate);
+    ON_BYTES_RECEIVED on_bytes_recv = http_codec_get_recv_function();
+    umock_c_reset_all_calls();
+
+    STRICT_EXPECTED_CALL(http_header_create());
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    setup_http_header_item("date");
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    setup_http_header_item("Content-Type");
+    setup_http_header_item("Transfer-Encoding");
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+    STRICT_EXPECTED_CALL(byte_buffer_construct(IGNORED_ARG, IGNORED_ARG, IGNORED_ARG));
+
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(http_header_destroy(IGNORED_ARG));
+    STRICT_EXPECTED_CALL(free(IGNORED_ARG));
+
+    // act
+    size_t count = sizeof(TEST_HTTP_CHUNK_EXAMPLE_IRL_4)/sizeof(TEST_HTTP_CHUNK_EXAMPLE_IRL_4[0]);
+    for (size_t index = 0; index < count; index++)
+    {
+        const char* test_value = TEST_HTTP_CHUNK_EXAMPLE_IRL_4[index];
         size_t test_len = strlen(test_value);
         on_bytes_recv(handle, (const unsigned char*)test_value, test_len);
     }
